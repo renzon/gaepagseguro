@@ -72,7 +72,8 @@ class GeneratePaymentTests(unittest.TestCase):
                                           items, address)
         # mocking pagseguro connection
         fetch_mock = Mock()
-        fetch_mock.result = _SUCCESS_PAGSEGURO_XML
+        fetch_mock.result.content = _SUCCESS_PAGSEGURO_XML
+        fetch_mock.result.status_code=200
         fetch_mock.errors = {}
         fetch_mock.commit = Mock(return_value=[])
         generate_payment._fetch_command = fetch_mock

@@ -1,8 +1,17 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
+from xml.etree import ElementTree
 from google.appengine.api import urlfetch
 from gaebusiness.business import CommandList
 from gaebusiness.gaeutil import UrlFecthCommand
+
+import re
+
+_noxmlns_re=re.compile('''xmlns=["'].*["']''')
+
+def _remove_first_xmlns(xmlstr):
+  return "".join(_noxmlns_re.split(xmlstr,1))
+
 
 
 def _make_params(email, token, redirect_url, client_name, client_email, order_reference, items, address,
@@ -54,3 +63,10 @@ class GeneratePayment(CommandList):
 
     def do_business(self, stop_on_error=False):
         super(GeneratePayment,self).do_business(stop_on_error)
+        result=self._fetch_command.result
+        if result:
+            content=_remove_first_xmlns(result.content)
+            root = ElementTree.XML(content)
+            if root.tag != "errors":
+                self.result= root.findtext("code")
+            # handler error here on else
