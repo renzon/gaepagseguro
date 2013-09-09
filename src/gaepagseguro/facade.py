@@ -1,7 +1,67 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from decimal import Decimal
-from gaepagseguro.commands import GeneratePayment
+from gaepagseguro.commands import GeneratePayment, RetrievePaymentDetail
+
+
+def pagseguro_url(transaction_code):
+    '''
+    Returns the url which the user must be sent after the payment generation
+    '''
+    return str("https://pagseguro.uol.com.br/v2/checkout/payment.html?code=%s" % transaction_code)
+
+
+def payment(email, token, redirect_url, client_name, client_email, order_reference, items, address=None,
+            currency='BRL'):
+    '''Args:
+    email: the pagseguro registered email
+    token: the pagseguro registered token
+    redirect_url: the url where pagseguro should contact when some transaction ocurs
+    client_email: the client's email who is gonna to pay
+    client_name: the client's email who is gonna to pay
+    order_reference: your order's reference. Most of times, it is the id of the order on BD
+    items: a list of facade.PagSeguroItem objects
+    address: the shipping address. Must be facade.PagSeguroAddress instance
+    currency: default is BLR
+    Returns a Command that contacts pagseguro site to generate a payment. If successful, it contains the transaction
+    code on its result attribute'''
+
+    return GeneratePayment(email, token, redirect_url, client_name, client_email, order_reference, items, address,
+                           currency)
+
+
+def payment_detail(email, token, transaction_code):
+    '''
+    Used when PagSeguro redirect user after payment
+
+    email: the pagseguro registered email
+    token: the pagseguro registered token
+    transaction_code: the transaction code returned from payment
+
+    Returns a command that contacts pagseguro site an has the status code for the transaction in result attibute
+    (https://pagseguro.uol.com.br/v2/guia-de-integracao/api-de-notificacoes.html#!v2-item-api-de-notificacoes-status-da-transacao)
+     The command keep the entire xml string on xml attribute if the user need more details than just the status code
+     and keep the order_reference code on the attribute with same name
+
+
+    '''
+    return RetrievePaymentDetail(email, token, transaction_code, "https://ws.pagseguro.uol.com.br/v2/transactions")
+
+
+def payment_notification(email, token, transaction_code):
+    '''
+    Used when PagSeguro notifies that something happened with transaction
+    email: the pagseguro registered email
+    token: the pagseguro registered token
+    transaction_code: the transaction code returned from payment
+
+    Returns a command that contacts pagseguro site an has the status code for the transaction in result attibute
+    (https://pagseguro.uol.com.br/v2/guia-de-integracao/api-de-notificacoes.html#!v2-item-api-de-notificacoes-status-da-transacao)
+     The command keep the entire xml string on xml attribute if the user need more details than just the status code
+     and keep the order_reference code on the attribute with same name
+    '''
+    return RetrievePaymentDetail(email, token, transaction_code,
+                                 "https://ws.pagseguro.uol.com.br/v2/transactions/notifications")
 
 
 class PagSeguroItem(object):
@@ -28,22 +88,3 @@ class PagSeguroAddress(object):
         self.state = state
         self.complement = complement
         self.country = country
-
-
-def payment(email, token, redirect_url, client_name, client_email, order_reference, items, address=None,
-            currency='BRL'):
-    '''Args:
-    email: the pagseguro registered email
-    token: the pagseguro registered token
-    redirect_url: the url where pagseguro should contact when some transaction ocurs
-    client_email: the client's email who is gonna to pay
-    client_name: the client's email who is gonna to pay
-    order_reference: your order's reference. Most of times, it is the id of the order on BD
-    items: a list of facade.PagSeguroItem objects
-    address: the shipping address. Must be facade.PagSeguroAddress instance
-    currency: default is BLR
-    Returns a Command that contacts pagseguro site to generate a payment. If successful, it contains the transaction
-    code on its result attribute'''
-
-    return GeneratePayment(email, token, redirect_url, client_name, client_email, order_reference, items, address,
-                           currency)

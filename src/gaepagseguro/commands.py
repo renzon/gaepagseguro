@@ -70,3 +70,23 @@ class GeneratePayment(CommandList):
             if root.tag != "errors":
                 self.result= root.findtext("code")
             # handler error here on else
+
+
+class RetrievePaymentDetail(CommandList):
+    def __init__(self, email, token, transaction_code,url_base):
+        params = {'email':email,'token':token}
+        url="/".join([url_base,transaction_code])
+        self._fetch_command=UrlFecthCommand(url, params)
+        super(RetrievePaymentDetail,self).__init__([self._fetch_command])
+
+    def do_business(self, stop_on_error=False):
+        super(RetrievePaymentDetail,self).do_business(stop_on_error)
+        result=self._fetch_command.result
+        if result:
+            content=_remove_first_xmlns(result.content)
+            root = ElementTree.XML(content)
+            if root.tag != "errors":
+                self.result= root.findtext("status")
+                self.order_reference=root.findtext("reference")
+                self.xml=result
+            # handler error here on else
