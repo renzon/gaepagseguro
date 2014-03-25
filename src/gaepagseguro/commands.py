@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 from xml.etree import ElementTree
 from google.appengine.api import urlfetch
 from gaebusiness.business import CommandList
-from gaebusiness.gaeutil import UrlFecthCommand
+from gaebusiness.gaeutil import UrlFetchCommand
 
 import re
 
@@ -58,7 +58,7 @@ class GeneratePayment(CommandList):
                               currency)
         params = {k: v.encode('iso-8859-1') for k, v in params.iteritems()}
         headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=ISO-8859-1'}
-        self._fetch_command=UrlFecthCommand(_PAYMENT_URL, params, urlfetch.POST, headers)
+        self._fetch_command=UrlFetchCommand(_PAYMENT_URL, params, urlfetch.POST, headers)
         super(GeneratePayment,self).__init__([self._fetch_command])
 
     def do_business(self, stop_on_error=False):
@@ -76,7 +76,7 @@ class RetrievePaymentDetail(CommandList):
     def __init__(self, email, token, transaction_code,url_base):
         params = {'email':email,'token':token}
         url="/".join([url_base,transaction_code])
-        self._fetch_command=UrlFecthCommand(url, params)
+        self._fetch_command=UrlFetchCommand(url, params)
         super(RetrievePaymentDetail,self).__init__([self._fetch_command])
 
     def do_business(self, stop_on_error=False):

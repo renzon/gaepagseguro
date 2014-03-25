@@ -138,7 +138,7 @@ class GeneratePaymentTests(unittest.TestCase):
         fetch_mock.errors = {}
         fetch_mock.commit = Mock(return_value=[])
         generate_payment._fetch_command = fetch_mock
-        generate_payment.commands[0] = fetch_mock
+        generate_payment._CommandList__commands[0] = fetch_mock
 
         # Executing command
         generate_payment.execute()
