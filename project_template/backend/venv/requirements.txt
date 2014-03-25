@@ -1,3 +1,4 @@
 tekton==2.2.1
 gaebusiness==2.9
+gaegraph==2.1
 gaepagseguro==0.1.0

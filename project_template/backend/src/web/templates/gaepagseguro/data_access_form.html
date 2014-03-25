@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Formulário de Dados de Acesso</title>
+</head>
+<body>
+<h1>Formulário de dados de acesso</h1>
+
+<p>Colocar dados de acesso referentes a cadastro junto ao PagSeguro</p>
+
+<p>Como o token é secreto, é prudente acessar via https</p>
+
+<form action="{{ save_path }}" method="post">
+    Email <input type="text" name="email" value="{{ data_access.email if data_access }}"/>
+    <br/>
+    Token <input type="text" name="token" value="{{ data_access.token if data_access}}"/>
+    <br/>
+    <button type="submit">Salvar</button>
+
+</form>
+</body>
+</html>

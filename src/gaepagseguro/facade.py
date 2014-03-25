@@ -1,7 +1,22 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from decimal import Decimal
-from gaepagseguro.commands import GeneratePayment, RetrievePaymentDetail
+from gaepagseguro.commands import GeneratePayment, RetrievePaymentDetail, CreateOrUpdateAccessData, FindAccessDataCmd
+
+
+def find_access_data():
+    '''
+    Returns a command to find AccessData from pagseguro.
+     The data contains the email and token used in API calls
+    '''
+    return FindAccessDataCmd()
+
+
+def create_or_update_access_data(email, token):
+    '''
+    Returns a command to create or update de email and token needed for Pagseguro's API calls
+    '''
+    return CreateOrUpdateAccessData(email, token)
 
 
 def pagseguro_url(transaction_code):
@@ -62,15 +77,14 @@ def payment_notification(email, token, transaction_code):
     '''
     return RetrievePaymentDetail(email, token, transaction_code,
                                  "https://ws.pagseguro.uol.com.br/v2/transactions/notifications")
-
-
 class PagSeguroItem(object):
+
     def __init__(self, id, description, price, quantity):
         '''
         Representation of an order item
         id: item's identification
         description:  item's description
-        price: items price. Must be an int idicating the cents. Ex: R$ 1,21 will be 121 and R$ 1,00 will be 100
+        price: items price. Must be an int indicating the cents. Ex: R$ 1,21 will be 121 and R$ 1,00 will be 100
         '''
         self.id = id
         self.description = description
@@ -78,7 +92,9 @@ class PagSeguroItem(object):
         self.quantity = quantity
 
 
+
 class PagSeguroAddress(object):
+
     def __init__(self, street, number, quarter, postalcode, town, state, complement="Sem Complemento", country="BRA"):
         self.street = street
         self.number = number
@@ -88,3 +104,6 @@ class PagSeguroAddress(object):
         self.state = state
         self.complement = complement
         self.country = country
+
+
+

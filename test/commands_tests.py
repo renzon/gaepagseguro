@@ -2,8 +2,10 @@
 from __future__ import absolute_import, unicode_literals
 import unittest
 from gaepagseguro import facade, commands
-from gaepagseguro.commands import _make_params
+from gaepagseguro.commands import _make_params, FindAccessDataCmd
+from gaepagseguro.model import PagSeguroAccessData
 from mock import Mock
+from util import GAETestCase
 
 _SUCCESS_PAGSEGURO_CODE = '8CF4BE7DCECEF0F004A6DFA0A8243412'
 
@@ -100,6 +102,37 @@ _PAGSEGURO_DETAIL_XML = '''<?xml version="1.0" encoding="ISO-8859-1" standalone=
 def _generate_xml_detail(order_reference, status):
     xml = _PAGSEGURO_DETAIL_XML % (order_reference, status)
     return xml
+
+
+class PagSeguroAccessDataTests(GAETestCase):
+    def test_create_or_update_access_data(self):
+        data = FindAccessDataCmd().execute().result
+        self.assertIsNone(data)
+        facade.create_or_update_access_data('foo@gmail.com', 'abc').execute()
+        data = FindAccessDataCmd().execute().result
+        self.assertEqual('foo@gmail.com', data.email)
+        self.assertEqual('abc', data.token)
+        facade.create_or_update_access_data('other@gmail.com', '123').execute()
+        data2 = FindAccessDataCmd().execute().result
+        self.assertEqual(data.key, data2.key)
+        self.assertEqual('other@gmail.com', data2.email)
+        self.assertEqual('123', data2.token)
+
+        # Another change to assure data is not cached
+        facade.create_or_update_access_data('bar@gmail.com', 'xpto').execute()
+        data3 = FindAccessDataCmd().execute().result
+        self.assertEqual(data.key, data3.key)
+        self.assertEqual('bar@gmail.com', data3.email)
+        self.assertEqual('xpto', data3.token)
+
+    def test_find_access_data_cmd(self):
+        cmd = facade.find_access_data().execute()
+        self.assertIsNone(cmd.result)
+        PagSeguroAccessData(email='foo@gmail.com', token='abc').put()
+        data = facade.find_access_data().execute().result
+
+        self.assertEqual('foo@gmail.com', data.email)
+        self.assertEqual('abc', data.token)
 
 
 class GeneratePaymentTests(unittest.TestCase):
