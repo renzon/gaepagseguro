@@ -8,4 +8,13 @@ class PagSeguroAccessData(Node):
     email = ndb.StringProperty(required=True, indexed=False)
     token = ndb.StringProperty(required=True, indexed=False)
 
+class PagSeguroPayment(Node):
+    pass
+
+class PagSeguroItem(None):
+    '''
+    PagSeguroPayment can have several items
+    '''
+    pass
+
 

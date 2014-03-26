@@ -77,8 +77,9 @@ def payment_notification(email, token, transaction_code):
     '''
     return RetrievePaymentDetail(email, token, transaction_code,
                                  "https://ws.pagseguro.uol.com.br/v2/transactions/notifications")
-class PagSeguroItem(object):
 
+
+class PagSeguroItem(object):
     def __init__(self, id, description, price, quantity):
         '''
         Representation of an order item
@@ -92,9 +93,7 @@ class PagSeguroItem(object):
         self.quantity = quantity
 
 
-
 class PagSeguroAddress(object):
-
     def __init__(self, street, number, quarter, postalcode, town, state, complement="Sem Complemento", country="BRA"):
         self.street = street
         self.number = number
