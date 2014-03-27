@@ -42,4 +42,3 @@ handlers:
 - url: /.*
   script: convention.app
   secure: always
-
