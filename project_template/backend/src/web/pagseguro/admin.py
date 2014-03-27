@@ -5,7 +5,7 @@ from gaepagseguro import facade
 
 
 def index(_write_tmpl):
-    find_data_access = facade.find_access_data().execute()
+    find_data_access = facade.search_access_data().execute()
 
     save_path = router.to_path(salvar)
     dct = {'save_path': save_path,

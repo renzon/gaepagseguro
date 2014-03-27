@@ -1,4 +1,4 @@
-application: zenwarchi
+application: gaepagseguro
 version: 1
 runtime: python27
 api_version: 1
@@ -34,6 +34,12 @@ handlers:
 - url: /_ah/warmup
   script: warmup.app
 
+- url: /pagseguro/admin.*
+  script: convention.app
+  secure: always
+  login: admin
+
 - url: /.*
   script: convention.app
+  secure: always
 

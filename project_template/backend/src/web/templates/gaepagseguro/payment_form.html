@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+</head>
+<body>
+<h2>Formulário de Pagamento</h2>
+
+<form action="{{ payment_path }}" method="post">
+    {% macro input(name) %}
+        {{ name }}:<input type="text" name="{{ name }}"/><br/>
+    {% endmacro %}
+    <fieldset>
+        <legend>Dados do Usuário</legend>
+        {% for i in ['client_name','client_email'] %}
+            {{ input(i) }}
+        {% endfor %}
+    </fieldset>
+    <fieldset>
+        <legend>Item 1</legend>
+        {% for i in ['descriptions[]','quantities[]','prices[]'] %}
+            {{ input(i) }}
+        {% endfor %}
+    </fieldset>
+    <fieldset>
+        <legend>Item 2</legend>
+        {% for i in ['descriptions[]','quantities[]','prices[]'] %}
+            {{ input(i) }}
+        {% endfor %}
+    </fieldset>
+    <fieldset>
+        <legend>Endereço</legend>
+        {% for i in ['street','number','quarter','postalcode','town','state','complement'] %}
+            {{ input(i) }}
+        {% endfor %}
+    </fieldset>
+    <button type="submit">Pagar</button>
+</form>
+
+</body>
+</html>

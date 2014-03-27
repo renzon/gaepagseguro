@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 import unittest
+from google.appengine.ext import ndb
+from gaegraph.model import Node
 from gaepagseguro import facade, commands
-from gaepagseguro.commands import _make_params, FindAccessDataCmd
-from gaepagseguro.model import PagSeguroAccessData
+from gaepagseguro.commands import _make_params, FindAccessDataCmd, SaveNewOrder
+from gaepagseguro.model import PagSegAccessData, PagSegOrder
 from mock import Mock
 from util import GAETestCase
 
@@ -15,31 +17,34 @@ _SUCCESS_PAGSEGURO_XML = '''<?xml version="1.0" encoding="ISO-8859-1"?>
     <date>2010-12-02T10:11:28.000-02:00</date>
 </checkout>  ''' % _SUCCESS_PAGSEGURO_CODE
 
-_SUCESS_PARAMS = {"email": 'foo@bar.com',
-                  "token": '4567890oiuytfgh',
-                  "currency": "BRL",
-                  "reference": '1234',
-                  "senderName": 'Jhon Doe',
-                  "senderEmail": 'jhon@bar.com',
-                  "shippingType": "3",
-                  "redirectURL": 'https://store.com/pagseguro',
-                  "itemId1": '1',
-                  "itemDescription1": 'Python Course',
-                  "itemAmount1": '120.00',
-                  "itemQuantity1": '1',
-                  "itemId2": '2',
-                  "itemDescription2": 'Another Python Course',
-                  "itemAmount2": '240.00',
-                  "itemQuantity2": '2',
-                  "shippingAddressStreet": 'Rua 1',
-                  "shippingAddressNumber": '2',
-                  "shippingAddressComplement": 'apto 4',
-                  "shippingAddressDistrict": 'meu bairro',
-                  "shippingAddressPostalCode": '12345678',
-                  "shippingAddressCity": 'São Paulo',
-                  "shippingAddressState": 'SP',
-                  "shippingAddressCountry": "BRA"
-}
+
+def _build_success_params(id1, id2):
+    return {"email": 'foo@bar.com',
+            "token": '4567890oiuytfgh',
+            "currency": "BRL",
+            "reference": '1234',
+            "senderName": 'Jhon Doe',
+            "senderEmail": 'jhon@bar.com',
+            "shippingType": "3",
+            "redirectURL": 'https://mystore.com/pagseguro',
+            "itemId1": '%s' % id1,
+            "itemDescription1": 'Python Course',
+            "itemAmount1": '120.00',
+            "itemQuantity1": '1',
+            "itemId2": '%s' % id2,
+            "itemDescription2": 'Another Python Course',
+            "itemAmount2": '240.00',
+            "itemQuantity2": '2',
+            "shippingAddressStreet": 'Rua 1',
+            "shippingAddressNumber": '2',
+            "shippingAddressComplement": 'apto 4',
+            "shippingAddressDistrict": 'meu bairro',
+            "shippingAddressPostalCode": '12345678',
+            "shippingAddressCity": 'São Paulo',
+            "shippingAddressState": 'SP',
+            "shippingAddressCountry": "BRA"
+    }
+
 
 _PAGSEGURO_DETAIL_XML = '''<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
   <transaction>
@@ -126,43 +131,78 @@ class PagSeguroAccessDataTests(GAETestCase):
         self.assertEqual('xpto', data3.token)
 
     def test_find_access_data_cmd(self):
-        cmd = facade.find_access_data().execute()
+        cmd = facade.search_access_data().execute()
         self.assertIsNone(cmd.result)
-        PagSeguroAccessData(email='foo@gmail.com', token='abc').put()
-        data = facade.find_access_data().execute().result
+        PagSegAccessData(email='foo@gmail.com', token='abc').put()
+        data = facade.search_access_data().execute().result
 
         self.assertEqual('foo@gmail.com', data.email)
         self.assertEqual('abc', data.token)
 
 
-class GeneratePaymentTests(unittest.TestCase):
+class ItemReferenceMock(Node):
+    pass
+
+
+class OrderOwner(Node):
+    pass
+
+
+class GeneratePaymentTests(GAETestCase):
+    def test_save_new_order(self):
+        owner = OrderOwner()
+        reference0 = ItemReferenceMock()
+        reference1 = ItemReferenceMock()
+        ndb.put_multi([reference0, reference1, owner])
+        items = [facade.create_item(reference0, 'Python Course', '120.00', 1),
+                 facade.create_item(reference1, 'Another Python Course', '240.00', 2)]
+        cmd = SaveNewOrder(owner, items).execute()
+
+        items_keys = [i.key for i in items]
+        orders = facade.search_orders(owner).execute().result
+        self.assertEqual(1, len(orders))
+        searched_items = facade.search_items(orders[0]).execute().result
+        self.assertEqual(2, len(searched_items))
+        searched_keys = [i.key for i in searched_items]
+        self.assertListEqual(items_keys, searched_keys)
+
+
     def test_make_params(self):
-        items = [facade.PagSeguroItem(1, 'Python Course', 12000, 1),
-                 facade.PagSeguroItem(2, 'Another Python Course', 24000, 2)]
-        address = facade.PagSeguroAddress('Rua 1', 2, 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
+        #creating dataaccess
         email = 'foo@bar.com'
         token = '4567890oiuytfgh'
+        reference0 = ItemReferenceMock()
+        reference1 = ItemReferenceMock()
+        owner = OrderOwner()
+        ndb.put_multi([reference0, reference1, owner])
+        items = [facade.create_item(reference0, 'Python Course', '120.00', 1),
+                 facade.create_item(reference1, 'Another Python Course', '240.00', 2)]
+
+        address = facade.address('Rua 1', 2, 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
+
         client_name = 'Jhon Doe'
         client_email = 'jhon@bar.com'
-        redirect_url = 'https://store.com/pagseguro'
+        redirect_url = 'https://mystore.com/pagseguro'
         order_reference = '1234'
         dct = _make_params(email, token, redirect_url, client_name, client_email, order_reference,
                            items, address, 'BRL')
-        self.assertDictEqual(_SUCESS_PARAMS, dct)
+        self.maxDiff = None
+        self.assertDictEqual(_build_success_params(reference0.key.id(), reference1.key.id()), dct)
 
 
     def test_success(self):
         # Setup data
-        items = [facade.PagSeguroItem(1, 'Python Course', 12000, 1),
-                 facade.PagSeguroItem(2, 'Another Python Course', 24000, 2)]
-        address = facade.PagSeguroAddress('Rua 1', 2, 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
         email = 'foo@bar.com'
         token = '4567890oiuytfgh'
+        facade.create_or_update_access_data(email, token).execute()
+        items = [facade.create_item(1, 'Python Course', '120.00', 1),
+                 facade.create_item(2, 'Another Python Course', '240.00', 2)]
+        address = facade.address('Rua 1', 2, 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
         client_name = 'Jhon Doe'
         client_email = 'jhon@bar.com'
         redirect_url = 'https://store.com/pagseguro'
         order_reference = '1234'
-        generate_payment = facade.payment(email, token, redirect_url, client_name, client_email, order_reference,
+        generate_payment = facade.payment(redirect_url, client_name, client_email, order_reference,
                                           items, address)
         # mocking pagseguro connection
         fetch_mock = Mock()
@@ -174,10 +214,13 @@ class GeneratePaymentTests(unittest.TestCase):
         generate_payment._CommandList__commands[0] = fetch_mock
 
         # Executing command
-        generate_payment.execute()
+        order = generate_payment.execute().result
 
         #asserting code extraction
-        self.assertEqual(_SUCCESS_PAGSEGURO_CODE, generate_payment.result)
+        self.assertEqual(_SUCCESS_PAGSEGURO_CODE, order.code)
+        order_key = PagSegOrder.query_by_code(_SUCCESS_PAGSEGURO_CODE).get(keys_only=True)
+        self.assertEqual(order.key, order_key)
+        self.assertEqual(2, len(facade.search_items(order_key).execute().result))
 
 
 class RetrieveDetailTests(unittest.TestCase):

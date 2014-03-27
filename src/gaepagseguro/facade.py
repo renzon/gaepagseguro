@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from decimal import Decimal
+from gaegraph.business_base import DestinationsSearch
+from gaegraph.model import to_node_key
 from gaepagseguro.commands import GeneratePayment, RetrievePaymentDetail, CreateOrUpdateAccessData, FindAccessDataCmd
+from gaepagseguro.model import PagSegItem, PagSegOrderToItem, OriginToPagSegOrder
 
 
-def find_access_data():
+def search_access_data():
     '''
     Returns a command to find AccessData from pagseguro.
      The data contains the email and token used in API calls
@@ -26,22 +29,20 @@ def pagseguro_url(transaction_code):
     return str("https://pagseguro.uol.com.br/v2/checkout/payment.html?code=%s" % transaction_code)
 
 
-def payment(email, token, redirect_url, client_name, client_email, order_reference, items, address=None,
+def payment(redirect_url, client_name, client_email, order_origin, items, address=None,
             currency='BRL'):
     '''Args:
-    email: the pagseguro registered email
-    token: the pagseguro registered token
     redirect_url: the url where pagseguro should contact when some transaction ocurs
     client_email: the client's email who is gonna to pay
     client_name: the client's email who is gonna to pay
-    order_reference: your order's reference. Most of times, it is the id of the order on BD
-    items: a list of facade.PagSeguroItem objects
-    address: the shipping address. Must be facade.PagSeguroAddress instance
+    order_origin: your order's reference. Most of times, it is the id of the order owner on BD
+    items: a list of facade.create_item objects
+    address: the shipping address. Must be facade.address instance
     currency: default is BLR
     Returns a Command that contacts pagseguro site to generate a payment. If successful, it contains the transaction
     code on its result attribute'''
 
-    return GeneratePayment(email, token, redirect_url, client_name, client_email, order_reference, items, address,
+    return GeneratePayment(redirect_url, client_name, client_email, order_origin, items, address,
                            currency)
 
 
@@ -79,21 +80,7 @@ def payment_notification(email, token, transaction_code):
                                  "https://ws.pagseguro.uol.com.br/v2/transactions/notifications")
 
 
-class PagSeguroItem(object):
-    def __init__(self, id, description, price, quantity):
-        '''
-        Representation of an order item
-        id: item's identification
-        description:  item's description
-        price: items price. Must be an int indicating the cents. Ex: R$ 1,21 will be 121 and R$ 1,00 will be 100
-        '''
-        self.id = id
-        self.description = description
-        self.price = '%.2f' % (Decimal(price) / Decimal(100))
-        self.quantity = quantity
-
-
-class PagSeguroAddress(object):
+class _PagSeguroAddress(object):
     def __init__(self, street, number, quarter, postalcode, town, state, complement="Sem Complemento", country="BRA"):
         self.street = street
         self.number = number
@@ -105,4 +92,36 @@ class PagSeguroAddress(object):
         self.country = country
 
 
+def address(street, number, quarter, postalcode, town, state, complement="Sem Complemento", country="BRA"):
+    '''
+    Build an address to be used with payment function
+    '''
+    return _PagSeguroAddress(street, number, quarter, postalcode, town, state, complement, country)
 
+
+def create_item(reference, description, price, quantity):
+    '''
+    Creates a item.
+    A list of this items must be passed as argument to function payment
+    Reference must be a node, or its key or its id. This reference is a link
+    Between a pagseguro item and an external entity
+    '''
+    reference = to_node_key(reference)
+    return PagSegItem(reference=reference,
+                      quantity=quantity,
+                      price=price,
+                      description=description)
+
+
+def search_orders(owner):
+    '''
+    Returns a command that returns the orders from a owner
+    '''
+    return DestinationsSearch(OriginToPagSegOrder,to_node_key(owner))
+
+
+def search_items(order):
+    '''
+    Returns a command that returns the items from a order
+    '''
+    return DestinationsSearch(PagSegOrderToItem,to_node_key(order))
