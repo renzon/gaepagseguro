@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <style>
+        table, th, td {
+            border: 1px solid black;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+<h2>Lista de Pagamentos</h2>
+
+<table style="">
+    <thead>
+    <tr>
+        <th>Referência</th>
+        <th>Descrição</th>
+        <th>Preço</th>
+        <th>Quantidade</th>
+        <th>Total</th>
+    </tr>
+
+    </thead>
+    <tbody>
+    {% for i in items %}
+        <tr>
+            <td>{{ i.reference.id() }}</td>
+            <td>{{ i.description }}</td>
+            <td>{{ i.price }}</td>
+            <td>{{ i.quantity }}</td>
+            <td>{{ i.total() }}</td>
+
+        </tr>
+    {% else %}
+        <tr>Nenhum item cadastrado</tr>
+    {% endfor %}
+    {% if items %}
+        <tr><td colspan="4"></td><td>Total Geral: {{ total }}</th></tr>
+    {% endif %}
+    </tbody>
+</table>
+
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <style>
+        table, th, td {
+            border: 1px solid black;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+<h2>Lista de Pagamentos</h2>
+
+<table style="">
+    <thead>
+    <tr>
+        <th>Data</th>
+        <th>Código Pagseguro</th>
+        <th>Status</th>
+        <th></th>
+    </tr>
+
+    </thead>
+    <tbody>
+    {% for pay in payments %}
+        <tr>
+            <td>{{ pay.creation }}</td>
+            <td>{{ pay.code }}</td>
+            <td>{{ pay.status }}</td>
+            <td>
+                <a href="{{ detail_path }}/{{ pay.key.id() }}">Detalhar</a>
+            </td>
+        </tr>
+    {% else %}
+        <tr>Nenhum pagamento realizado</tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+</body>
+</html>
