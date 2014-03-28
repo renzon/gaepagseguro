@@ -4,7 +4,7 @@ from decimal import Decimal
 from gaegraph.business_base import DestinationsSearch
 from gaegraph.model import to_node_key
 from gaepagseguro.commands import GeneratePayment, RetrievePaymentDetail, CreateOrUpdateAccessData, FindAccessDataCmd
-from gaepagseguro.model import PagSegItem, PagSegOrderToItem, OriginToPagSegOrder
+from gaepagseguro.model import PagSegItem, PagSegPaymentToItem, OriginToPagSegPayment
 
 
 def search_access_data():
@@ -29,20 +29,20 @@ def pagseguro_url(transaction_code):
     return str("https://pagseguro.uol.com.br/v2/checkout/payment.html?code=%s" % transaction_code)
 
 
-def payment(redirect_url, client_name, client_email, order_origin, items, address=None,
+def payment(redirect_url, client_name, client_email, payment_origin, items, address=None,
             currency='BRL'):
     '''Args:
     redirect_url: the url where pagseguro should contact when some transaction ocurs
     client_email: the client's email who is gonna to pay
     client_name: the client's email who is gonna to pay
-    order_origin: your order's reference. Most of times, it is the id of the order owner on BD
+    payment_origin: your payment's reference. Most of times, it is the id of the order owner on BD
     items: a list of facade.create_item objects
     address: the shipping address. Must be facade.address instance
     currency: default is BLR
     Returns a Command that contacts pagseguro site to generate a payment. If successful, it contains the transaction
     code on its result attribute'''
 
-    return GeneratePayment(redirect_url, client_name, client_email, order_origin, items, address,
+    return GeneratePayment(redirect_url, client_name, client_email, payment_origin, items, address,
                            currency)
 
 
@@ -57,7 +57,7 @@ def payment_detail(email, token, transaction_code):
     Returns a command that contacts pagseguro site an has the status code for the transaction in result attibute
     (https://pagseguro.uol.com.br/v2/guia-de-integracao/api-de-notificacoes.html#!v2-item-api-de-notificacoes-status-da-transacao)
      The command keep the entire xml string on xml attribute if the user need more details than just the status code
-     and keep the order_reference code on the attribute with same name
+     and keep the payment_reference code on the attribute with same name
 
 
     '''
@@ -74,7 +74,7 @@ def payment_notification(email, token, transaction_code):
     Returns a command that contacts pagseguro site an has the status code for the transaction in result attibute
     (https://pagseguro.uol.com.br/v2/guia-de-integracao/api-de-notificacoes.html#!v2-item-api-de-notificacoes-status-da-transacao)
      The command keep the entire xml string on xml attribute if the user need more details than just the status code
-     and keep the order_reference code on the attribute with same name
+     and keep the payment_reference code on the attribute with same name
     '''
     return RetrievePaymentDetail(email, token, transaction_code,
                                  "https://ws.pagseguro.uol.com.br/v2/transactions/notifications")
@@ -113,15 +113,15 @@ def create_item(reference, description, price, quantity):
                       description=description)
 
 
-def search_orders(owner):
+def search_payments(owner):
     '''
-    Returns a command that returns the orders from a owner
+    Returns a command that returns the payments from a owner
     '''
-    return DestinationsSearch(OriginToPagSegOrder,to_node_key(owner))
+    return DestinationsSearch(OriginToPagSegPayment,to_node_key(owner))
 
 
-def search_items(order):
+def search_items(payment):
     '''
-    Returns a command that returns the items from a order
+    Returns a command that returns the items from a payment
     '''
-    return DestinationsSearch(PagSegOrderToItem,to_node_key(order))
+    return DestinationsSearch(PagSegPaymentToItem,to_node_key(payment))

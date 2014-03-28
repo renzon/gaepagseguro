@@ -14,7 +14,7 @@ class PagSegAccessData(Node):
     token = ndb.StringProperty(required=True, indexed=False)
 
 
-class PagSegOrder(Node):
+class PagSegPayment(Node):
     # code returned from Pagseguro after payment generation
     code = ndb.StringProperty()
     status = ndb.StringProperty(default=STATUS_CREATED, choices=STATUSES)
@@ -24,16 +24,16 @@ class PagSegOrder(Node):
         return cls.query(cls.code == code)
 
 
-class OriginToPagSegOrder(Arc):
+class OriginToPagSegPayment(Arc):
     '''
-    Arc to link some out of the app entity to a PagSegOrder
+    Arc to link some out of the app entity to a PagSegPayment
     '''
-    destination = ndb.KeyProperty(PagSegOrder, required=True)
+    destination = ndb.KeyProperty(PagSegPayment, required=True)
 
 
 class PagSegItem(Node):
     '''
-    PagSegOrder can have several items
+    PagSegPayment can have several items
     '''
     #references a property from outside pagseguro app
     reference = ndb.KeyProperty(required=True)
@@ -45,11 +45,11 @@ class PagSegItem(Node):
         return self.price * self.quantity
 
 
-class PagSegOrderToItem(Arc):
+class PagSegPaymentToItem(Arc):
     '''
-    Defines the items corresponding to a Order
+    Defines the a item corresponding to a Payment
     '''
-    origin = ndb.KeyProperty(PagSegOrder, required=True)
+    origin = ndb.KeyProperty(PagSegPayment, required=True)
     destination = ndb.KeyProperty(PagSegItem, required=True)
 
 

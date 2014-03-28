@@ -34,10 +34,15 @@
 
         </tr>
     {% else %}
-        <tr>Nenhum item cadastrado</tr>
+        <tr>
+            <td>Nenhum item cadastrado</td>
+        </tr>
     {% endfor %}
     {% if items %}
-        <tr><td colspan="4"></td><td>Total Geral: {{ total }}</th></tr>
+        <tr>
+            <td colspan="4"></td>
+            <td>Total Geral: {{ total }}</td>
+        </tr>
     {% endif %}
     </tbody>
 </table>

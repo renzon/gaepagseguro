@@ -6,7 +6,7 @@ from google.appengine.ext import ndb
 from gaebusiness.business import CommandList, Command
 from gaebusiness.gaeutil import UrlFetchCommand, ModelSearchCommand
 from gaegraph.model import Node, to_node_key
-from gaepagseguro.model import PagSegAccessData, PagSegItem, OriginToPagSegOrder, PagSegOrder, PagSegOrderToItem
+from gaepagseguro.model import PagSegAccessData, PagSegItem, OriginToPagSegPayment, PagSegPayment, PagSegPaymentToItem
 
 import re
 
@@ -17,12 +17,12 @@ def _remove_first_xmlns(xmlstr):
     return "".join(_noxmlns_re.split(xmlstr, 1))
 
 
-def _make_params(email, token, redirect_url, client_name, client_email, order_reference, items, address,
+def _make_params(email, token, redirect_url, client_name, client_email, payment_reference, items, address,
                  currency):
     d = {"email": email,
          "token": token,
          "currency": currency,
-         "reference": str(order_reference),
+         "reference": str(payment_reference),
          "senderName": client_name,
          "senderEmail": client_email,
          "shippingType": "3",
@@ -108,33 +108,33 @@ class SaveNode(Command):
         self.__future.get_result()
 
 
-class SaveNewOrder(CommandList):
+class SaveNewPayment(CommandList):
     def __init__(self, owner, items):
         self.__owner = to_node_key(owner)
-        self.__save_order = SaveNode(PagSegOrder())
+        self.__save_payment = SaveNode(PagSegPayment())
         self.__save_items = SaveNodes(items)
         self.__arcs = None
         self.items = items
-        super(SaveNewOrder, self).__init__([self.__save_items, self.__save_order])
+        super(SaveNewPayment, self).__init__([self.__save_items, self.__save_payment])
 
     def do_business(self, stop_on_error=True):
-        super(SaveNewOrder, self).do_business(stop_on_error)
-        order_key = self.__save_order.result.key
+        super(SaveNewPayment, self).do_business(stop_on_error)
+        order_key = self.__save_payment.result.key
         items = self.__save_items.result
-        self.__arcs = [PagSegOrderToItem(origin=order_key, destination=i.key) for i in items]
-        self.__arcs.append(OriginToPagSegOrder(origin=self.__owner, destination=order_key))
+        self.__arcs = [PagSegPaymentToItem(origin=order_key, destination=i.key) for i in items]
+        self.__arcs.append(OriginToPagSegPayment(origin=self.__owner, destination=order_key))
 
     def commit(self):
-        return super(SaveNewOrder, self).commit() + self.__arcs
+        return super(SaveNewPayment, self).commit() + self.__arcs
 
 
 class GeneratePayment(CommandList):
-    def __init__(self, redirect_url, client_name, client_email, order_owner, items, address,
+    def __init__(self, redirect_url, client_name, client_email, payment_owner, items, address,
                  currency):
         data_access = FindAccessDataCmd().execute().result
-        self.__save_new_order=SaveNewOrder(order_owner,items)
+        self.__save_new_payment = SaveNewPayment(payment_owner, items)
         params = _make_params(data_access.email, data_access.token, redirect_url, client_name, client_email,
-                              order_owner, items, address,
+                              payment_owner, items, address,
                               currency)
         params = {k: v.encode('iso-8859-1') for k, v in params.iteritems()}
         headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=ISO-8859-1'}
@@ -143,13 +143,13 @@ class GeneratePayment(CommandList):
 
     def set_up(self):
         super(GeneratePayment, self).set_up()
-        self.__save_new_order.set_up()
+        self.__save_new_payment.set_up()
 
     def do_business(self, stop_on_error=False):
         super(GeneratePayment, self).do_business(stop_on_error)
-        self.__save_new_order.do_business(stop_on_error)
-        ndb.put_multi(self.__save_new_order.commit())
-        self.result=self.__save_new_order.result
+        self.__save_new_payment.do_business(stop_on_error)
+        ndb.put_multi(self.__save_new_payment.commit())
+        self.result = self.__save_new_payment.result
         fetch_result = self._fetch_command.result
 
         if fetch_result:
@@ -179,6 +179,6 @@ class RetrievePaymentDetail(CommandList):
             root = ElementTree.XML(content)
             if root.tag != "errors":
                 self.result = root.findtext("status")
-                self.order_reference = root.findtext("reference")
+                self.payment_reference = root.findtext("reference")
                 self.xml = result
                 # handler error here on else

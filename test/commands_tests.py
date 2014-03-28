@@ -4,8 +4,8 @@ import unittest
 from google.appengine.ext import ndb
 from gaegraph.model import Node
 from gaepagseguro import facade, commands
-from gaepagseguro.commands import _make_params, FindAccessDataCmd, SaveNewOrder
-from gaepagseguro.model import PagSegAccessData, PagSegOrder
+from gaepagseguro.commands import _make_params, FindAccessDataCmd, SaveNewPayment
+from gaepagseguro.model import PagSegAccessData, PagSegPayment
 from mock import Mock
 from util import GAETestCase
 
@@ -104,8 +104,8 @@ _PAGSEGURO_DETAIL_XML = '''<?xml version="1.0" encoding="ISO-8859-1" standalone=
   </transaction>  '''
 
 
-def _generate_xml_detail(order_reference, status):
-    xml = _PAGSEGURO_DETAIL_XML % (order_reference, status)
+def _generate_xml_detail(payment_reference, status):
+    xml = _PAGSEGURO_DETAIL_XML % (payment_reference, status)
     return xml
 
 
@@ -144,24 +144,24 @@ class ItemReferenceMock(Node):
     pass
 
 
-class OrderOwner(Node):
+class PaymentOwner(Node):
     pass
 
 
 class GeneratePaymentTests(GAETestCase):
-    def test_save_new_order(self):
-        owner = OrderOwner()
+    def test_save_new_payment(self):
+        owner = PaymentOwner()
         reference0 = ItemReferenceMock()
         reference1 = ItemReferenceMock()
         ndb.put_multi([reference0, reference1, owner])
         items = [facade.create_item(reference0, 'Python Course', '120.00', 1),
                  facade.create_item(reference1, 'Another Python Course', '240.00', 2)]
-        cmd = SaveNewOrder(owner, items).execute()
+        cmd = SaveNewPayment(owner, items).execute()
 
         items_keys = [i.key for i in items]
-        orders = facade.search_orders(owner).execute().result
-        self.assertEqual(1, len(orders))
-        searched_items = facade.search_items(orders[0]).execute().result
+        payments = facade.search_payments(owner).execute().result
+        self.assertEqual(1, len(payments))
+        searched_items = facade.search_items(payments[0]).execute().result
         self.assertEqual(2, len(searched_items))
         searched_keys = [i.key for i in searched_items]
         self.assertListEqual(items_keys, searched_keys)
@@ -173,7 +173,7 @@ class GeneratePaymentTests(GAETestCase):
         token = '4567890oiuytfgh'
         reference0 = ItemReferenceMock()
         reference1 = ItemReferenceMock()
-        owner = OrderOwner()
+        owner = PaymentOwner()
         ndb.put_multi([reference0, reference1, owner])
         items = [facade.create_item(reference0, 'Python Course', '120.00', 1),
                  facade.create_item(reference1, 'Another Python Course', '240.00', 2)]
@@ -183,8 +183,8 @@ class GeneratePaymentTests(GAETestCase):
         client_name = 'Jhon Doe'
         client_email = 'jhon@bar.com'
         redirect_url = 'https://mystore.com/pagseguro'
-        order_reference = '1234'
-        dct = _make_params(email, token, redirect_url, client_name, client_email, order_reference,
+        payment_reference = '1234'
+        dct = _make_params(email, token, redirect_url, client_name, client_email, payment_reference,
                            items, address, 'BRL')
         self.maxDiff = None
         self.assertDictEqual(_build_success_params(reference0.key.id(), reference1.key.id()), dct)
@@ -201,8 +201,8 @@ class GeneratePaymentTests(GAETestCase):
         client_name = 'Jhon Doe'
         client_email = 'jhon@bar.com'
         redirect_url = 'https://store.com/pagseguro'
-        order_reference = '1234'
-        generate_payment = facade.payment(redirect_url, client_name, client_email, order_reference,
+        payment_reference = '1234'
+        generate_payment = facade.payment(redirect_url, client_name, client_email, payment_reference,
                                           items, address)
         # mocking pagseguro connection
         fetch_mock = Mock()
@@ -214,13 +214,13 @@ class GeneratePaymentTests(GAETestCase):
         generate_payment._CommandList__commands[0] = fetch_mock
 
         # Executing command
-        order = generate_payment.execute().result
+        payment_ = generate_payment.execute().result
 
         #asserting code extraction
-        self.assertEqual(_SUCCESS_PAGSEGURO_CODE, order.code)
-        order_key = PagSegOrder.query_by_code(_SUCCESS_PAGSEGURO_CODE).get(keys_only=True)
-        self.assertEqual(order.key, order_key)
-        self.assertEqual(2, len(facade.search_items(order_key).execute().result))
+        self.assertEqual(_SUCCESS_PAGSEGURO_CODE, payment_.code)
+        payment__key = PagSegPayment.query_by_code(_SUCCESS_PAGSEGURO_CODE).get(keys_only=True)
+        self.assertEqual(payment_.key, payment__key)
+        self.assertEqual(2, len(facade.search_items(payment__key).execute().result))
 
 
 class RetrieveDetailTests(unittest.TestCase):
@@ -229,7 +229,7 @@ class RetrieveDetailTests(unittest.TestCase):
 
         email = 'foo@bar.com'
         token = '4567890oiuytfgh'
-        order_reference = '1234'
+        payment_reference = '1234'
         status = '1'
 
         # mocking pagseguro connection
@@ -237,7 +237,7 @@ class RetrieveDetailTests(unittest.TestCase):
         fetch_mock = Mock()
         commands.UrlFecthCommand = fetch_mock
         payment_detail = facade.payment_detail(email, token, _SUCCESS_PAGSEGURO_CODE)
-        fetch_mock.result.content = _generate_xml_detail(order_reference, status)
+        fetch_mock.result.content = _generate_xml_detail(payment_reference, status)
         fetch_mock.result.status_code = 200
         fetch_mock.errors = {}
         fetch_mock.commit = Mock(return_value=[])
@@ -249,7 +249,7 @@ class RetrieveDetailTests(unittest.TestCase):
 
         #asserting code extraction
         self.assertEqual(status, payment_detail.result)
-        self.assertEqual(order_reference, payment_detail.order_reference)
+        self.assertEqual(payment_reference, payment_detail.payment_reference)
         self.assertIsNotNone(payment_detail.xml)
         fetch_mock.assert_any_call('https://ws.pagseguro.uol.com.br/v2/transactions/' + _SUCCESS_PAGSEGURO_CODE,
                                    {'email': email, 'token': token})
