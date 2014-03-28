@@ -2,27 +2,24 @@
 from __future__ import absolute_import, unicode_literals
 from itertools import izip
 from google.appengine.ext import ndb
+from commands import FindOrCreateUserCmd
 from gaegraph.model import Node
 from gaepagseguro import facade
 from tekton import router
+from model import OrderItem
 from web.pagseguro import home
 
 # essas classes tem que ser do seu dominio
-class OrderOwner(Node):
-    pass
 
-
-class OrderItem(Node):
-    pass
 
 
 def gerar_pagamento(_handler, client_name, client_email, descriptions, quantities, prices,
                     street, number, quarter, postalcode, town, state, complement="Sem Complemento", country="BRA",
                     currency='BRL'):
     #saving mocking objects
-    owner_key = OrderOwner()
+    owner_key = FindOrCreateUserCmd().execute().result
     items_references = [OrderItem() for i in xrange(len(descriptions))]
-    ndb.put_multi(items_references + [owner_key])
+    ndb.put_multi(items_references)
 
     #generating parameters
     items = [facade.create_item(ref, description, price, int(quantity)) for ref, description, price, quantity
