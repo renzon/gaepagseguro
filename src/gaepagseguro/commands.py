@@ -6,7 +6,8 @@ from google.appengine.ext import ndb
 from gaebusiness.business import CommandList, Command
 from gaebusiness.gaeutil import UrlFetchCommand, ModelSearchCommand
 from gaegraph.model import Node, to_node_key
-from gaepagseguro.model import PagSegAccessData, PagSegItem, OriginToPagSegPayment, PagSegPayment, PagSegPaymentToItem
+from gaepagseguro.model import PagSegAccessData, PagSegItem, OriginToPagSegPayment, PagSegPayment, PagSegPaymentToItem, \
+    STATUS_SENT_TO_PAGSEGURO
 
 import re
 
@@ -130,41 +131,48 @@ class SaveNewPayment(CommandList):
         return super(SaveNewPayment, self).commit() + self.__arcs
 
 
-class GeneratePayment(CommandList):
+class GeneratePayment(SaveNewPayment):
     def __init__(self, redirect_url, client_name, client_email, payment_owner, items, address,
-                 currency):
-        data_access = FindAccessDataCmd().execute().result
-        self.__save_new_payment = SaveNewPayment(payment_owner, items)
-        params = _make_params(data_access.email, data_access.token, redirect_url, client_name, client_email,
-                              payment_owner, items, address,
-                              currency)
-        params = {k: v.encode('iso-8859-1') for k, v in params.iteritems()}
-        headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=ISO-8859-1'}
-        self._fetch_command = UrlFetchCommand(_PAYMENT_URL, params, urlfetch.POST, headers)
-        super(GeneratePayment, self).__init__([self._fetch_command])
+                 currency, fetch_cmd=None):
+        super(GeneratePayment, self).__init__(payment_owner, items)
+        self.currency = currency
+        self.address = address
+        self.client_email = client_email
+        self.client_name = client_name
+        self.redirect_url = redirect_url
+        # Fetch is here just for testing purpose, allowing dependency injection on tests
+        self.fetch_cmd = fetch_cmd
+        self.__to_commit=None
 
-    def set_up(self):
-        super(GeneratePayment, self).set_up()
-        self.__save_new_payment.set_up()
 
     def do_business(self, stop_on_error=False):
         super(GeneratePayment, self).do_business(stop_on_error)
-        self.__save_new_payment.do_business(stop_on_error)
-        ndb.put_multi(self.__save_new_payment.commit())
-        self.result = self.__save_new_payment.result
-        fetch_result = self._fetch_command.result
+        data_access = FindAccessDataCmd().execute().result
+        params = _make_params(data_access.email, data_access.token,
+                              self.redirect_url, self.client_name,
+                              self.client_email, self.result.key,
+                              self.items, self.address,
+                              self.currency)
+        params = {k: unicode(v).encode('iso-8859-1') for k, v in params.iteritems()}
+        headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=ISO-8859-1'}
+        fetch_cmd = self.fetch_cmd or UrlFetchCommand(_PAYMENT_URL, params, urlfetch.POST, headers)
+        fetch_result = fetch_cmd.execute().result
 
         if fetch_result:
             content = _remove_first_xmlns(fetch_result.content)
             root = ElementTree.XML(content)
             if root.tag != "errors":
                 self.result.code = root.findtext("code")
+                self.result.status = STATUS_SENT_TO_PAGSEGURO
+                self.__to_commit=self.result
                 # handler error here on else
 
-    def commit(self):
-        if self.result.code:
-            return self.result
 
+    def commit(self):
+        list_to_commit=super(GeneratePayment,self).commit()
+        if self.__to_commit:
+            list_to_commit.append(self.__to_commit)
+        return list_to_commit
 
 class RetrievePaymentDetail(CommandList):
     def __init__(self, email, token, transaction_code, url_base):

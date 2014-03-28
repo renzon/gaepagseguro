@@ -6,7 +6,7 @@ from google.appengine.ext import ndb
 from gaegraph.model import Node
 from gaepagseguro import facade, commands
 from gaepagseguro.commands import _make_params, FindAccessDataCmd, SaveNewPayment
-from gaepagseguro.model import PagSegAccessData, PagSegPayment
+from gaepagseguro.model import PagSegAccessData, PagSegPayment, STATUS_SENT_TO_PAGSEGURO
 from mock import Mock
 from util import GAETestCase
 
@@ -203,23 +203,25 @@ class GeneratePaymentTests(GAETestCase):
         client_email = 'jhon@bar.com'
         redirect_url = 'https://store.com/pagseguro'
         payment_reference = '1234'
-        generate_payment = facade.payment(redirect_url, client_name, client_email, payment_reference,
-                                          items, address)
         # mocking pagseguro connection
         fetch_mock = Mock()
+        fetch_mock.execute = Mock(return_value=fetch_mock)
         fetch_mock.result.content = _SUCCESS_PAGSEGURO_XML
         fetch_mock.result.status_code = 200
         fetch_mock.errors = {}
         fetch_mock.commit = Mock(return_value=[])
-        generate_payment._fetch_command = fetch_mock
-        generate_payment._CommandList__commands[0] = fetch_mock
+
+        generate_payment = facade.payment(redirect_url, client_name, client_email, payment_reference,
+                                          items, address, fetch_cmd=fetch_mock)
 
         # Executing command
         payment = generate_payment.execute().result
 
         #asserting code extraction
         self.assertEqual(Decimal('601.67'), payment.total)
+        self.assertEqual(STATUS_SENT_TO_PAGSEGURO, payment.status)
         self.assertEqual(_SUCCESS_PAGSEGURO_CODE, payment.code)
+
         payment_key = PagSegPayment.query_by_code(_SUCCESS_PAGSEGURO_CODE).get(keys_only=True)
         self.assertEqual(payment.key, payment_key)
         self.assertEqual(2, len(facade.search_items(payment_key).execute().result))

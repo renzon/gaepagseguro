@@ -30,7 +30,7 @@ def pagseguro_url(transaction_code):
 
 
 def payment(redirect_url, client_name, client_email, payment_origin, items, address=None,
-            currency='BRL'):
+            currency='BRL', fetch_cmd=None):
     '''Args:
     redirect_url: the url where pagseguro should contact when some transaction ocurs
     client_email: the client's email who is gonna to pay
@@ -39,11 +39,12 @@ def payment(redirect_url, client_name, client_email, payment_origin, items, addr
     items: a list of facade.create_item objects
     address: the shipping address. Must be facade.address instance
     currency: default is BLR
+    fetch_cmd: comand to fetch pagsegur site. It's purpose is dependency injection on tests
     Returns a Command that contacts pagseguro site to generate a payment. If successful, it contains the transaction
     code on its result attribute'''
 
     return GeneratePayment(redirect_url, client_name, client_email, payment_origin, items, address,
-                           currency)
+                           currency, fetch_cmd)
 
 
 def payment_detail(email, token, transaction_code):
@@ -117,11 +118,11 @@ def search_payments(owner):
     '''
     Returns a command that returns the payments from a owner
     '''
-    return DestinationsSearch(OriginToPagSegPayment,to_node_key(owner))
+    return DestinationsSearch(OriginToPagSegPayment, to_node_key(owner))
 
 
 def search_items(payment):
     '''
     Returns a command that returns the items from a payment
     '''
-    return DestinationsSearch(PagSegPaymentToItem,to_node_key(payment))
+    return DestinationsSearch(PagSegPaymentToItem, to_node_key(payment))
