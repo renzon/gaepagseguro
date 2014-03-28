@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
+from decimal import Decimal
 import unittest
 from google.appengine.ext import ndb
 from gaegraph.model import Node
@@ -195,7 +196,7 @@ class GeneratePaymentTests(GAETestCase):
         email = 'foo@bar.com'
         token = '4567890oiuytfgh'
         facade.create_or_update_access_data(email, token).execute()
-        items = [facade.create_item(1, 'Python Course', '120.00', 1),
+        items = [facade.create_item(1, 'Python Course', '121.67', 1),
                  facade.create_item(2, 'Another Python Course', '240.00', 2)]
         address = facade.address('Rua 1', 2, 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
         client_name = 'Jhon Doe'
@@ -214,13 +215,14 @@ class GeneratePaymentTests(GAETestCase):
         generate_payment._CommandList__commands[0] = fetch_mock
 
         # Executing command
-        payment_ = generate_payment.execute().result
+        payment = generate_payment.execute().result
 
         #asserting code extraction
-        self.assertEqual(_SUCCESS_PAGSEGURO_CODE, payment_.code)
-        payment__key = PagSegPayment.query_by_code(_SUCCESS_PAGSEGURO_CODE).get(keys_only=True)
-        self.assertEqual(payment_.key, payment__key)
-        self.assertEqual(2, len(facade.search_items(payment__key).execute().result))
+        self.assertEqual(Decimal('601.67'), payment.total)
+        self.assertEqual(_SUCCESS_PAGSEGURO_CODE, payment.code)
+        payment_key = PagSegPayment.query_by_code(_SUCCESS_PAGSEGURO_CODE).get(keys_only=True)
+        self.assertEqual(payment.key, payment_key)
+        self.assertEqual(2, len(facade.search_items(payment_key).execute().result))
 
 
 class RetrieveDetailTests(unittest.TestCase):

@@ -111,7 +111,9 @@ class SaveNode(Command):
 class SaveNewPayment(CommandList):
     def __init__(self, owner, items):
         self.__owner = to_node_key(owner)
-        self.__save_payment = SaveNode(PagSegPayment())
+        payment = PagSegPayment()
+        payment.total = sum(i.total() for i in items)
+        self.__save_payment = SaveNode(payment)
         self.__save_items = SaveNodes(items)
         self.__arcs = None
         self.items = items

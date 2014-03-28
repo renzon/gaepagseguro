@@ -16,8 +16,9 @@
     <thead>
     <tr>
         <th>Data</th>
-        <th>Código Pagseguro</th>
         <th>Status</th>
+        <th>Código Pagseguro</th>
+        <th>Valor</th>
         <th></th>
     </tr>
 
@@ -26,8 +27,9 @@
     {% for pay in payments %}
         <tr>
             <td>{{ pay.creation }}</td>
-            <td>{{ pay.code }}</td>
             <td>{{ pay.status }}</td>
+            <td>{{ pay.code }}</td>
+            <td>{{ pay.total }}</td>
             <td>
                 <a href="{{ detail_path }}/{{ pay.key.id() }}">Detalhar</a>
             </td>

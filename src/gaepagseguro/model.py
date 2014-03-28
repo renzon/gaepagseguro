@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
+from decimal import Decimal
 from google.appengine.ext import ndb
 from gaegraph.model import Node, Arc
 from ndbext.property import SimpleCurrency, IntegerBounded
@@ -18,6 +19,7 @@ class PagSegPayment(Node):
     # code returned from Pagseguro after payment generation
     code = ndb.StringProperty()
     status = ndb.StringProperty(default=STATUS_CREATED, choices=STATUSES)
+    total = SimpleCurrency()
 
     @classmethod
     def query_by_code(cls, code):
@@ -42,7 +44,9 @@ class PagSegItem(Node):
     quantity = IntegerBounded(required=True, lower=1, indexed=False)
 
     def total(self):
-        return self.price * self.quantity
+        if isinstance(self.price, Decimal):
+            return self.price * self.quantity
+        return Decimal(self.price) * self.quantity
 
 
 class PagSegPaymentToItem(Arc):
