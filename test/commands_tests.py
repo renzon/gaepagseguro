@@ -6,7 +6,7 @@ from google.appengine.ext import ndb
 from gaegraph.model import Node
 from gaepagseguro import facade, commands
 from gaepagseguro.commands import _make_params, FindAccessDataCmd, SaveNewPayment
-from gaepagseguro.model import PagSegAccessData, PagSegPayment, STATUS_SENT_TO_PAGSEGURO
+from gaepagseguro.model import PagSegAccessData, PagSegPayment, STATUS_SENT_TO_PAGSEGURO, STATUS_CREATED
 from mock import Mock
 from util import GAETestCase
 
@@ -166,6 +166,8 @@ class GeneratePaymentTests(GAETestCase):
         self.assertEqual(2, len(searched_items))
         searched_keys = [i.key for i in searched_items]
         self.assertListEqual(items_keys, searched_keys)
+        logs = facade.search_logs(payments[0]).execute().result
+        self.assertListEqual([STATUS_CREATED], [log.status for log in logs])
 
 
     def test_make_params(self):
@@ -221,10 +223,14 @@ class GeneratePaymentTests(GAETestCase):
         self.assertEqual(Decimal('601.67'), payment.total)
         self.assertEqual(STATUS_SENT_TO_PAGSEGURO, payment.status)
         self.assertEqual(_SUCCESS_PAGSEGURO_CODE, payment.code)
-
+        # Asserting items saved
         payment_key = PagSegPayment.query_by_code(_SUCCESS_PAGSEGURO_CODE).get(keys_only=True)
         self.assertEqual(payment.key, payment_key)
         self.assertEqual(2, len(facade.search_items(payment_key).execute().result))
+
+        #Asserting logs saved
+        logs = facade.search_logs(payment_key).execute().result
+        self.assertListEqual([STATUS_CREATED,STATUS_SENT_TO_PAGSEGURO], [log.status for log in logs])
 
 
 class RetrieveDetailTests(unittest.TestCase):

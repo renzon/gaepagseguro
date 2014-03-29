@@ -20,6 +20,7 @@
         <th>Código Pagseguro</th>
         <th>Valor</th>
         <th></th>
+        <th></th>
     </tr>
 
     </thead>
@@ -32,6 +33,8 @@
             <td>{{ pay.total }}</td>
             <td>
                 <a href="{{ detail_path }}/{{ pay.key.id() }}">Detalhar</a>
+            </td><td>
+                <a href="{{ log_path }}/{{ pay.key.id() }}">Histórico</a>
             </td>
         </tr>
     {% else %}

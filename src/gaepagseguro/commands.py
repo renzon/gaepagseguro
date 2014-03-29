@@ -7,7 +7,7 @@ from gaebusiness.business import CommandList, Command
 from gaebusiness.gaeutil import UrlFetchCommand, ModelSearchCommand
 from gaegraph.model import Node, to_node_key
 from gaepagseguro.model import PagSegAccessData, PagSegItem, OriginToPagSegPayment, PagSegPayment, PagSegPaymentToItem, \
-    STATUS_SENT_TO_PAGSEGURO
+    STATUS_SENT_TO_PAGSEGURO, PagSegLog, PagSegPaymentToLog, STATUS_CREATED
 
 import re
 
@@ -112,20 +112,23 @@ class SaveNode(Command):
 class SaveNewPayment(CommandList):
     def __init__(self, owner, items):
         self.__owner = to_node_key(owner)
-        payment = PagSegPayment()
+        payment = PagSegPayment(status=STATUS_CREATED)
         payment.total = sum(i.total() for i in items)
         self.__save_payment = SaveNode(payment)
+        self.__save_log = SaveNode(PagSegLog(status=payment.status))
         self.__save_items = SaveNodes(items)
         self.__arcs = None
         self.items = items
-        super(SaveNewPayment, self).__init__([self.__save_items, self.__save_payment])
+        super(SaveNewPayment, self).__init__([self.__save_log, self.__save_items, self.__save_payment])
 
     def do_business(self, stop_on_error=True):
         super(SaveNewPayment, self).do_business(stop_on_error)
-        order_key = self.__save_payment.result.key
+        payment_key = self.__save_payment.result.key
+        log_key = self.__save_log.result.key
         items = self.__save_items.result
-        self.__arcs = [PagSegPaymentToItem(origin=order_key, destination=i.key) for i in items]
-        self.__arcs.append(OriginToPagSegPayment(origin=self.__owner, destination=order_key))
+        self.__arcs = [PagSegPaymentToItem(origin=payment_key, destination=i.key) for i in items]
+        self.__arcs.append(OriginToPagSegPayment(origin=self.__owner, destination=payment_key))
+        self.__arcs.append(PagSegPaymentToLog(origin=payment_key, destination=log_key))
 
     def commit(self):
         return super(SaveNewPayment, self).commit() + self.__arcs
@@ -142,7 +145,7 @@ class GeneratePayment(SaveNewPayment):
         self.redirect_url = redirect_url
         # Fetch is here just for testing purpose, allowing dependency injection on tests
         self.fetch_cmd = fetch_cmd
-        self.__to_commit=None
+        self.__to_commit = None
 
 
     def do_business(self, stop_on_error=False):
@@ -164,15 +167,18 @@ class GeneratePayment(SaveNewPayment):
             if root.tag != "errors":
                 self.result.code = root.findtext("code")
                 self.result.status = STATUS_SENT_TO_PAGSEGURO
-                self.__to_commit=self.result
+                log_key = PagSegLog(status=STATUS_SENT_TO_PAGSEGURO).put()
+                arc = PagSegPaymentToLog(origin=self.result.key, destination=log_key)
+                self.__to_commit = [self.result, arc]
                 # handler error here on else
 
 
     def commit(self):
-        list_to_commit=super(GeneratePayment,self).commit()
+        list_to_commit = super(GeneratePayment, self).commit()
         if self.__to_commit:
-            list_to_commit.append(self.__to_commit)
+            list_to_commit.extend(self.__to_commit)
         return list_to_commit
+
 
 class RetrievePaymentDetail(CommandList):
     def __init__(self, email, token, transaction_code, url_base):

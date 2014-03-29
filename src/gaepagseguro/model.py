@@ -15,6 +15,10 @@ class PagSegAccessData(Node):
     token = ndb.StringProperty(required=True, indexed=False)
 
 
+class PagSegLog(Node):
+    status = ndb.StringProperty(required=True, choices=STATUSES, indexed=False)
+
+
 class PagSegPayment(Node):
     # code returned from Pagseguro after payment generation
     code = ndb.StringProperty()
@@ -24,6 +28,11 @@ class PagSegPayment(Node):
     @classmethod
     def query_by_code(cls, code):
         return cls.query(cls.code == code)
+
+
+class PagSegPaymentToLog(Arc):
+    origin = ndb.KeyProperty(PagSegPayment, required=True)
+    destination = ndb.KeyProperty(PagSegLog, required=True)
 
 
 class OriginToPagSegPayment(Arc):

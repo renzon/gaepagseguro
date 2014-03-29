@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <style>
+        table, th, td {
+            border: 1px solid black;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+<h2>Lista de Pagamentos</h2>
+
+<table style="">
+    <thead>
+    <tr>
+        <th>Status</th>
+        <th>Date</th>
+    </tr>
+
+    </thead>
+    <tbody>
+    {% for log in logs %}
+        <tr>
+            <td>{{ log.status }}</td>
+            <td>{{ log.creation }}</td>
+
+        </tr>
+    {% else %}
+        <tr>
+            <td>Nenhum log cadastrado</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+</body>
+</html>

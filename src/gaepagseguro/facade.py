@@ -4,7 +4,7 @@ from decimal import Decimal
 from gaegraph.business_base import DestinationsSearch
 from gaegraph.model import to_node_key
 from gaepagseguro.commands import GeneratePayment, RetrievePaymentDetail, CreateOrUpdateAccessData, FindAccessDataCmd
-from gaepagseguro.model import PagSegItem, PagSegPaymentToItem, OriginToPagSegPayment
+from gaepagseguro.model import PagSegItem, PagSegPaymentToItem, OriginToPagSegPayment, PagSegPaymentToLog
 
 
 def search_access_data():
@@ -126,3 +126,10 @@ def search_items(payment):
     Returns a command that returns the items from a payment
     '''
     return DestinationsSearch(PagSegPaymentToItem, to_node_key(payment))
+
+
+def search_logs(payment):
+    '''
+    Returns a command that returns the logs from a payment
+    '''
+    return DestinationsSearch(PagSegPaymentToLog, to_node_key(payment))
