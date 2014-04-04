@@ -180,6 +180,18 @@ class GeneratePayment(SaveNewPayment):
         return list_to_commit
 
 
+class AllPaymentsSearch(ModelSearchCommand):
+    def __init__(self, page_size=20, start_cursor=None, offset=0, use_cache=True, cache_begin=True):
+        query = PagSegPayment.query().order(-PagSegPayment.creation)
+        super(AllPaymentsSearch, self).__init__(query, page_size, start_cursor, offset, use_cache, cache_begin)
+
+
+class PaymentsByStatusSearch(ModelSearchCommand):
+    def __init__(self, payment_status, page_size=20, start_cursor=None, offset=0, use_cache=True, cache_begin=True):
+        query = PagSegPayment.query(PagSegPayment.status == payment_status).order(-PagSegPayment.creation)
+        super(PaymentsByStatusSearch, self).__init__(query, page_size, start_cursor, offset, use_cache, cache_begin)
+
+
 class RetrievePaymentDetail(CommandList):
     def __init__(self, email, token, transaction_code, url_base):
         params = {'email': email, 'token': token}

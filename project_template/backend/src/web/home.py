@@ -7,5 +7,6 @@ from web.pagseguro import admin, form, pagamento
 def index(_write_tmpl):
     dct = {'admin_form': router.to_path(admin.index),
            'payment_form': router.to_path(form.index),
-           'payment_list': router.to_path(pagamento.listar)}
+           'payment_list': router.to_path(pagamento.listar),
+           'payment_admin_list': router.to_path(admin.listar)}
     _write_tmpl('templates/home.html', dct)

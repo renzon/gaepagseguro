@@ -193,7 +193,8 @@ class GeneratePaymentTests(GAETestCase):
         self.assertDictEqual(_build_success_params(reference0.key.id(), reference1.key.id()), dct)
 
 
-    def test_success(self):
+class IntegrationTests(GAETestCase):
+    def test_payment_generation(self):
         # Setup data
         email = 'foo@bar.com'
         token = '4567890oiuytfgh'
@@ -230,7 +231,31 @@ class GeneratePaymentTests(GAETestCase):
 
         #Asserting logs saved
         logs = facade.search_logs(payment_key).execute().result
-        self.assertListEqual([STATUS_CREATED,STATUS_SENT_TO_PAGSEGURO], [log.status for log in logs])
+        self.assertListEqual([STATUS_CREATED, STATUS_SENT_TO_PAGSEGURO], [log.status for log in logs])
+
+    def test_all_payment_search(self):
+        self.maxDiff = None
+        created_payments = [PagSegPayment(status=STATUS_CREATED) for i in xrange(3)]
+        ndb.put_multi(created_payments)
+        #reversing because search is desc
+        created_payments.reverse()
+
+        sent_payments = [PagSegPayment(status=STATUS_SENT_TO_PAGSEGURO) for i in xrange(3)]
+        ndb.put_multi(sent_payments)
+        sent_payments.reverse()
+        # Testing search for all
+        cmd = facade.search_all_payments(page_size=3).execute()
+        self.assertListEqual(sent_payments, cmd.result)
+        cmd2 = facade.search_all_payments(page_size=3, start_cursor=cmd.cursor).execute()
+        self.assertListEqual(created_payments, cmd2.result)
+        cmd3 = facade.search_all_payments(page_size=3, start_cursor=cmd2.cursor).execute()
+        self.assertListEqual([], cmd3.result)
+
+        #Test search based on status
+        cmd = facade.search_all_payments(STATUS_SENT_TO_PAGSEGURO, page_size=4).execute()
+        self.assertListEqual(sent_payments, cmd.result)
+        cmd = facade.search_all_payments(STATUS_CREATED, page_size=4).execute()
+        self.assertListEqual(created_payments, cmd.result)
 
 
 class RetrieveDetailTests(unittest.TestCase):

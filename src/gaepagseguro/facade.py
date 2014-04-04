@@ -3,8 +3,11 @@ from __future__ import absolute_import, unicode_literals
 from decimal import Decimal
 from gaegraph.business_base import DestinationsSearch
 from gaegraph.model import to_node_key
-from gaepagseguro.commands import GeneratePayment, RetrievePaymentDetail, CreateOrUpdateAccessData, FindAccessDataCmd
-from gaepagseguro.model import PagSegItem, PagSegPaymentToItem, OriginToPagSegPayment, PagSegPaymentToLog
+from gaepagseguro.commands import GeneratePayment, RetrievePaymentDetail, CreateOrUpdateAccessData, FindAccessDataCmd, \
+    AllPaymentsSearch, PaymentsByStatusSearch
+from gaepagseguro.model import PagSegItem, PagSegPaymentToItem, OriginToPagSegPayment, PagSegPaymentToLog, STATUSES
+
+PAYMENT_STATUSES = STATUSES
 
 
 def search_access_data():
@@ -116,9 +119,20 @@ def create_item(reference, description, price, quantity):
 
 def search_payments(owner):
     '''
-    Returns a command that returns the payments from a owner
+    Returns a command to search owner's payment
     '''
     return DestinationsSearch(OriginToPagSegPayment, to_node_key(owner))
+
+
+def search_all_payments(payment_status=None, page_size=20, start_cursor=None, offset=0, use_cache=True,
+                        cache_begin=True):
+    '''
+    Returns a command to search all payments ordered by creation desc
+    '''
+    if payment_status:
+        return PaymentsByStatusSearch(payment_status, page_size, start_cursor, offset, use_cache,
+                                      cache_begin)
+    return AllPaymentsSearch(page_size, start_cursor, offset, use_cache, cache_begin)
 
 
 def search_items(payment):
