@@ -7,10 +7,14 @@
 <body>
 {% block body %}
     <h1>Exemplo de utilizaçao Pag Seguro</h1>
+    <h2>Acesso com Usuário Google Logado:</h2>
+    <ul>
+        <li><a href="{{ payment_form }}">Formulário de Pagamento</a></li>
+        <li><a href="{{ payment_list }}">Lista de Pagamentos de usuaŕio logado</a></li>
+    </ul>
+    <h2>Acesso restrito a administrador:</h2>
     <ul>
         <li><a href="{{ admin_form }}">Formulário de Administração</a></li>
-        <li><a href="{{ payment_form }}">Formulário de Pagamento</a></li>
-        <li><a href="{{ payment_list }}">Lista de Pagamentos</a></li>
     </ul>
 
 {% endblock %}
