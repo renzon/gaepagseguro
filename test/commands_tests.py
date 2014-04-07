@@ -3,10 +3,13 @@ from __future__ import absolute_import, unicode_literals
 from decimal import Decimal
 import unittest
 from google.appengine.ext import ndb
+from gaegraph.business_base import DestinationsSearch
 from gaegraph.model import Node
 from gaepagseguro import facade, commands
 from gaepagseguro.commands import _make_params, FindAccessDataCmd, SaveNewPayment
-from gaepagseguro.model import PagSegAccessData, PagSegPayment, STATUS_SENT_TO_PAGSEGURO, STATUS_CREATED
+from gaepagseguro.model import PagSegAccessData, PagSegPayment, STATUS_SENT_TO_PAGSEGURO, STATUS_CREATED, PagSegLog, \
+    PagSegPaymentToLog, STATUS_ANALYSIS, STATUS_ACCEPTED, STATUS_RETURNED, STATUS_DISPUTE, STATUS_AVAILABLE, \
+    STATUS_CANCELLED
 from mock import Mock
 from util import GAETestCase
 
@@ -258,38 +261,53 @@ class IntegrationTests(GAETestCase):
         self.assertListEqual(created_payments, cmd.result)
 
 
-class RetrieveDetailTests(unittest.TestCase):
-    def test_success(self):
-        # Setup data
-
-        email = 'foo@bar.com'
-        token = '4567890oiuytfgh'
-        payment_reference = '1234'
-        status = '1'
-
+class RetrieveDetailTests(GAETestCase):
+    def _assert_history_change(self, acess_data, payment_key, pagseguro_xml_status, expected_status_history):
         # mocking pagseguro connection
-
         fetch_mock = Mock()
         commands.UrlFecthCommand = fetch_mock
-        payment_detail = facade.payment_detail(email, token, _SUCCESS_PAGSEGURO_CODE)
-        fetch_mock.result.content = _generate_xml_detail(payment_reference, status)
+        payment_detail = facade.payment_detail(_SUCCESS_PAGSEGURO_CODE)
+        fetch_mock.result.content = _generate_xml_detail(payment_key.id(), pagseguro_xml_status)
         fetch_mock.result.status_code = 200
         fetch_mock.errors = {}
         fetch_mock.commit = Mock(return_value=[])
-        payment_detail._fetch_command = fetch_mock
-        payment_detail.commands[0] = fetch_mock
-
+        fetch_class_mock = Mock(return_value=fetch_mock)
+        payment_detail._fetch_command = fetch_class_mock
         # Executing command
-        payment_detail.execute()
-
+        updated_payment = payment_detail.execute().result
         #asserting code extraction
-        self.assertEqual(status, payment_detail.result)
-        self.assertEqual(payment_reference, payment_detail.payment_reference)
+        saved_logs = DestinationsSearch(PagSegPaymentToLog, payment_key).execute().result
+        saved_statuses = [log.status for log in saved_logs]
+        self.assertListEqual(expected_status_history, saved_statuses)
+        self.assertEqual(expected_status_history[-1], updated_payment.status)
         self.assertIsNotNone(payment_detail.xml)
-        fetch_mock.assert_any_call('https://ws.pagseguro.uol.com.br/v2/transactions/' + _SUCCESS_PAGSEGURO_CODE,
-                                   {'email': email, 'token': token})
+        fetch_class_mock.assert_called_once_with(
+            'https://ws.pagseguro.uol.com.br/v2/transactions/' + _SUCCESS_PAGSEGURO_CODE,
+            {'email': acess_data.email, 'token': acess_data.token})
 
+    def test_success(self):
+        # Setup data
 
+        acess_data = PagSegAccessData(email='renzo@python.pro.br', token='abc123')
+        acess_data.put()
 
+        payment_key = PagSegPayment(code='FOO',status=STATUS_SENT_TO_PAGSEGURO).put()
 
-
+        # Mocking logs that are generated when payment is sent
+        logs_keys = [PagSegLog(status=STATUS_CREATED).put(), PagSegLog(status=STATUS_SENT_TO_PAGSEGURO).put()]
+        for log_key in logs_keys:
+            PagSegPaymentToLog(origin=payment_key, destination=log_key).put()
+        expected_statuses = [STATUS_CREATED, STATUS_SENT_TO_PAGSEGURO]
+        self._assert_history_change(acess_data, payment_key, '1', expected_statuses)
+        expected_statuses.append(STATUS_ANALYSIS)
+        self._assert_history_change(acess_data, payment_key, '2', expected_statuses)
+        expected_statuses.append(STATUS_ACCEPTED)
+        self._assert_history_change(acess_data, payment_key, '3', expected_statuses)
+        expected_statuses.append(STATUS_AVAILABLE)
+        self._assert_history_change(acess_data, payment_key, '4', expected_statuses)
+        expected_statuses.append(STATUS_DISPUTE)
+        self._assert_history_change(acess_data, payment_key, '5', expected_statuses)
+        expected_statuses.append(STATUS_RETURNED)
+        self._assert_history_change(acess_data, payment_key, '6', expected_statuses)
+        expected_statuses.append(STATUS_CANCELLED)
+        self._assert_history_change(acess_data, payment_key, '7', expected_statuses)

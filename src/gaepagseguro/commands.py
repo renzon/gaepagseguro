@@ -5,9 +5,11 @@ from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
 from gaebusiness.business import CommandList, Command
 from gaebusiness.gaeutil import UrlFetchCommand, ModelSearchCommand
+from gaegraph.business_base import NodeSearch
 from gaegraph.model import Node, to_node_key
 from gaepagseguro.model import PagSegAccessData, PagSegItem, OriginToPagSegPayment, PagSegPayment, PagSegPaymentToItem, \
-    STATUS_SENT_TO_PAGSEGURO, PagSegLog, PagSegPaymentToLog, STATUS_CREATED
+    STATUS_SENT_TO_PAGSEGURO, PagSegLog, PagSegPaymentToLog, STATUS_CREATED, STATUS_ANALYSIS, STATUS_ACCEPTED, \
+    STATUS_AVAILABLE, STATUS_DISPUTE, STATUS_CANCELLED, STATUS_RETURNED
 
 import re
 
@@ -192,21 +194,50 @@ class PaymentsByStatusSearch(ModelSearchCommand):
         super(PaymentsByStatusSearch, self).__init__(query, page_size, start_cursor, offset, use_cache, cache_begin)
 
 
-class RetrievePaymentDetail(CommandList):
-    def __init__(self, email, token, transaction_code, url_base):
-        params = {'email': email, 'token': token}
-        url = "/".join([url_base, transaction_code])
-        self._fetch_command = UrlFetchCommand(url, params)
-        super(RetrievePaymentDetail, self).__init__([self._fetch_command])
+XML_STATUS_TO_MODEL_STATUS = {'1': STATUS_SENT_TO_PAGSEGURO,
+              '2': STATUS_ANALYSIS,
+              '3': STATUS_ACCEPTED,
+              '4': STATUS_AVAILABLE,
+              '5': STATUS_DISPUTE,
+              '6': STATUS_RETURNED,
+              '7': STATUS_CANCELLED}
+
+
+class UpdatePaymentStatus(Command):
+    def __init__(self, transaction_code, url_base):
+        self._fetch_command = None
+        self.url = "/".join([url_base, transaction_code])
+        super(UpdatePaymentStatus, self).__init__()
+
+    def set_up(self):
+        access_data = FindAccessDataCmd().execute().result
+        params = {'email': access_data.email, 'token': access_data.token}
+        self.__to_commit = None
+        # attribution to allow dependency injection of fetch_command
+        self._fetch_command = self._fetch_command(self.url, params) or UrlFetchCommand(self.url, params)
+        self._fetch_command.set_up()
 
     def do_business(self, stop_on_error=False):
-        super(RetrievePaymentDetail, self).do_business(stop_on_error)
-        result = self._fetch_command.result
-        if result:
-            content = _remove_first_xmlns(result.content)
+        self._fetch_command.do_business()
+        pagseguro_fetch_result = self._fetch_command.result
+        if pagseguro_fetch_result:
+            content = _remove_first_xmlns(pagseguro_fetch_result.content)
+            self.xml = content
             root = ElementTree.XML(content)
             if root.tag != "errors":
-                self.result = root.findtext("status")
-                self.payment_reference = root.findtext("reference")
-                self.xml = result
-                # handler error here on else
+                status = root.findtext("status")
+                payment_id = root.findtext("reference")
+                payment = NodeSearch(payment_id).execute().result
+                self.result = payment
+                internal_status = XML_STATUS_TO_MODEL_STATUS[status]
+                if payment.status != internal_status:
+                    log_key = PagSegLog(status=internal_status).put()
+                    payment.status = internal_status
+                    self.__to_commit = [payment,
+                                        PagSegPaymentToLog(origin=payment.key, destination=log_key)]
+
+                    # handler error here on else
+
+    def commit(self):
+        return self.__to_commit
+

@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 from decimal import Decimal
 from gaegraph.business_base import DestinationsSearch
 from gaegraph.model import to_node_key
-from gaepagseguro.commands import GeneratePayment, RetrievePaymentDetail, CreateOrUpdateAccessData, FindAccessDataCmd, \
+from gaepagseguro.commands import GeneratePayment, UpdatePaymentStatus, CreateOrUpdateAccessData, FindAccessDataCmd, \
     AllPaymentsSearch, PaymentsByStatusSearch
 from gaepagseguro.model import PagSegItem, PagSegPaymentToItem, OriginToPagSegPayment, PagSegPaymentToLog, STATUSES
 
@@ -50,22 +50,16 @@ def payment(redirect_url, client_name, client_email, payment_origin, items, addr
                            currency, fetch_cmd)
 
 
-def payment_detail(email, token, transaction_code):
+def payment_detail( transaction_code):
     '''
     Used when PagSeguro redirect user after payment
-
-    email: the pagseguro registered email
-    token: the pagseguro registered token
     transaction_code: the transaction code returned from payment
 
-    Returns a command that contacts pagseguro site an has the status code for the transaction in result attibute
+    Returns a command that contacts pagseguro site and change payment status and its history according to status code
     (https://pagseguro.uol.com.br/v2/guia-de-integracao/api-de-notificacoes.html#!v2-item-api-de-notificacoes-status-da-transacao)
-     The command keep the entire xml string on xml attribute if the user need more details than just the status code
-     and keep the payment_reference code on the attribute with same name
-
-
+     The command keep the entire xml string on xml attribute if the user need more details
     '''
-    return RetrievePaymentDetail(email, token, transaction_code, "https://ws.pagseguro.uol.com.br/v2/transactions")
+    return UpdatePaymentStatus(transaction_code, "https://ws.pagseguro.uol.com.br/v2/transactions")
 
 
 def payment_notification(email, token, transaction_code):
@@ -80,7 +74,7 @@ def payment_notification(email, token, transaction_code):
      The command keep the entire xml string on xml attribute if the user need more details than just the status code
      and keep the payment_reference code on the attribute with same name
     '''
-    return RetrievePaymentDetail(email, token, transaction_code,
+    return UpdatePaymentStatus(email, token, transaction_code,
                                  "https://ws.pagseguro.uol.com.br/v2/transactions/notifications")
 
 
