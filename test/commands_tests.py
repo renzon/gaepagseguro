@@ -246,7 +246,7 @@ class IntegrationTests(GAETestCase):
         items = [facade.create_item(1, 'Python Course', '121.67', 1),
                  facade.create_item(2, 'Another Python Course', '240.00', 2)]
         address = facade.address('Rua 1', 2, 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
-        client_name = 'Jhon Doe'
+        client_name = kwargs.get('client_name', ('Jhon Doe',))[0]
         client_email = kwargs.get('client_email', ('jhon@bar.com',))[0]
         redirect_url = 'https://store.com/pagseguro'
         payment_reference = '1234'
@@ -279,6 +279,19 @@ class IntegrationTests(GAETestCase):
     def test_email_with_more_than_60_chars(self):
         # Setup data
         self._assert_property_error(client_email=('a@foo.com.br'+('a'*49), 'Email deve ter menos de 60 caracteres'))
+
+    def test_required_client_name(self):
+        self._assert_property_error(client_name=('', 'Nome obrigatório'))
+
+    def test_full_client_name(self):
+        '''
+        Client name must have 2 names at leadt
+        '''
+        self._assert_property_error(client_name=('a', 'Nome informado deve ser completo'))
+        self._assert_property_error(client_name=('Renzo', 'Nome informado deve ser completo'))
+
+    def test_client_name_with_more_than_50_chars(self):
+        self._assert_property_error(client_name=('Renzo '+('a'*55), 'Nome deve possuir menos de 50 caracteres'))
 
     def test_all_payment_search(self):
         self.maxDiff = None

@@ -143,7 +143,7 @@ class GeneratePayment(SaveNewPayment):
         self.fetch_cmd = fetch_cmd
         self.__to_commit = None
 
-    def set_up(self):
+    def _validate_client_email(self):
         if self.client_email:
             if len(self.client_email) > 60:
                 self.add_error('client_email', 'Email deve ter menos de 60 caracteres')
@@ -152,6 +152,10 @@ class GeneratePayment(SaveNewPayment):
                 self.add_error('client_email', 'Email inválido')
         else:
             self.add_error('client_email', 'Email obrigatório')
+
+    def set_up(self):
+        self._validate_client_email()
+        self._validate_client_name()
         if not self.errors:
             super(GeneratePayment, self).set_up()
 
@@ -188,6 +192,15 @@ class GeneratePayment(SaveNewPayment):
             if self.__to_commit:
                 list_to_commit.extend(self.__to_commit)
             return list_to_commit
+
+    def _validate_client_name(self):
+        if self.client_name:
+            if len(self.client_name) > 50:
+                self.add_error('client_name', 'Nome deve possuir menos de 50 caracteres')
+            if not re.match(r'.+ .+', self.client_name):
+                self.add_error('client_name', 'Nome informado deve ser completo')
+        else:
+            self.add_error('client_name', 'Nome obrigatório')
 
 
 class AllPaymentsSearch(ModelSearchCommand):
