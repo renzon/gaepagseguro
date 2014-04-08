@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from decimal import Decimal
-import unittest
 from google.appengine.ext import ndb
 from gaegraph.business_base import DestinationsSearch
 from gaegraph.model import Node
@@ -9,7 +8,7 @@ from gaepagseguro import facade, commands
 from gaepagseguro.commands import _make_params, FindAccessDataCmd, SaveNewPayment
 from gaepagseguro.model import PagSegAccessData, PagSegPayment, STATUS_SENT_TO_PAGSEGURO, STATUS_CREATED, PagSegLog, \
     PagSegPaymentToLog, STATUS_ANALYSIS, STATUS_ACCEPTED, STATUS_RETURNED, STATUS_DISPUTE, STATUS_AVAILABLE, \
-    STATUS_CANCELLED
+    STATUS_CANCELLED, PagSegItem
 from mock import Mock
 from util import GAETestCase
 
@@ -197,6 +196,15 @@ class GeneratePaymentTests(GAETestCase):
 
 
 class IntegrationTests(GAETestCase):
+    def _build_mock(self):
+        fetch_mock = Mock()
+        fetch_mock.execute = Mock(return_value=fetch_mock)
+        fetch_mock.result.content = _SUCCESS_PAGSEGURO_XML.encode('ISO-8859-1')
+        fetch_mock.result.status_code = 200
+        fetch_mock.errors = {}
+        fetch_mock.commit = Mock(return_value=[])
+        return fetch_mock
+
     def test_payment_generation(self):
         # Setup data
         email = 'foo@bar.com'
@@ -210,19 +218,14 @@ class IntegrationTests(GAETestCase):
         redirect_url = 'https://store.com/pagseguro'
         payment_reference = '1234'
         # mocking pagseguro connection
-        fetch_mock = Mock()
-        fetch_mock.execute = Mock(return_value=fetch_mock)
-        fetch_mock.result.content = _SUCCESS_PAGSEGURO_XML.encode('ISO-8859-1')
-        fetch_mock.result.status_code = 200
-        fetch_mock.errors = {}
-        fetch_mock.commit = Mock(return_value=[])
+        fetch_mock = self._build_mock()
 
         generate_payment = facade.payment(redirect_url, client_name, client_email, payment_reference,
                                           items, address, fetch_cmd=fetch_mock)
 
         # Executing command
         payment = generate_payment.execute().result
-
+        self.assertDictEqual({}, generate_payment.errors)
         #asserting code extraction
         self.assertEqual(Decimal('601.67'), payment.total)
         self.assertEqual(STATUS_SENT_TO_PAGSEGURO, payment.status)
@@ -235,6 +238,47 @@ class IntegrationTests(GAETestCase):
         #Asserting logs saved
         logs = facade.search_logs(payment_key).execute().result
         self.assertListEqual([STATUS_CREATED, STATUS_SENT_TO_PAGSEGURO], [log.status for log in logs])
+
+    def _assert_property_error(self, **kwargs):
+        email = 'foo@bar.com'
+        token = '4567890oiuytfgh'
+        facade.create_or_update_access_data(email, token).execute()
+        items = [facade.create_item(1, 'Python Course', '121.67', 1),
+                 facade.create_item(2, 'Another Python Course', '240.00', 2)]
+        address = facade.address('Rua 1', 2, 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
+        client_name = 'Jhon Doe'
+        client_email = kwargs.get('client_email', ('jhon@bar.com',))[0]
+        redirect_url = 'https://store.com/pagseguro'
+        payment_reference = '1234'
+        # mocking pagseguro connection
+        fetch_mock = self._build_mock()
+        generate_payment = facade.payment(redirect_url, client_name, client_email, payment_reference,
+                                          items, address, fetch_cmd=fetch_mock)
+        # Executing command
+        command = generate_payment.execute()
+        error_dct = {k: v[1] for k, v in kwargs.iteritems()}
+        self.assertDictEqual(error_dct, command.errors)
+        # nothing is executed
+        self.assertFalse(fetch_mock.execute.called)
+        self.assertIsNone(PagSegLog.query().get())
+        self.assertIsNone(PagSegPayment.query().get())
+        self.assertIsNone(PagSegItem.query().get())
+
+    def test_email_not_present(self):
+        # Setup data
+        self._assert_property_error(client_email=('', 'Email obrigatório'))
+
+    def test_invalid_email(self):
+        # Setup data
+        self._assert_property_error(client_email=('a', 'Email inválido'))
+        self._assert_property_error(client_email=('a@', 'Email inválido'))
+        self._assert_property_error(client_email=('a@foo', 'Email inválido'))
+        self._assert_property_error(client_email=('a@foo.', 'Email inválido'))
+        self._assert_property_error(client_email=('a@foo.com.', 'Email inválido'))
+
+    def test_email_with_more_than_60_chars(self):
+        # Setup data
+        self._assert_property_error(client_email=('a@foo.com.br'+('a'*49), 'Email deve ter menos de 60 caracteres'))
 
     def test_all_payment_search(self):
         self.maxDiff = None

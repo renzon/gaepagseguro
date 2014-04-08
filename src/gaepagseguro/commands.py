@@ -14,9 +14,6 @@ from gaepagseguro.model import PagSegAccessData, PagSegItem, OriginToPagSegPayme
 import re
 
 
-
-
-
 def _make_params(email, token, redirect_url, client_name, client_email, payment_reference, items, address,
                  currency):
     d = {"email": email,
@@ -146,37 +143,51 @@ class GeneratePayment(SaveNewPayment):
         self.fetch_cmd = fetch_cmd
         self.__to_commit = None
 
+    def set_up(self):
+        if self.client_email:
+            if len(self.client_email) > 60:
+                self.add_error('client_email', 'Email deve ter menos de 60 caracteres')
+            match = re.match(r"[^@]+@[^@\.]+(\.[^@\.]+)+", self.client_email)
+            if not match or match.group(0) != self.client_email:
+                self.add_error('client_email', 'Email inválido')
+        else:
+            self.add_error('client_email', 'Email obrigatório')
+        if not self.errors:
+            super(GeneratePayment, self).set_up()
+
 
     def do_business(self, stop_on_error=False):
-        super(GeneratePayment, self).do_business(stop_on_error)
-        data_access = FindAccessDataCmd().execute().result
-        params = _make_params(data_access.email, data_access.token,
-                              self.redirect_url, self.client_name,
-                              self.client_email, self.result.key.id(),
-                              self.items, self.address,
-                              self.currency)
-        params = {k: unicode(v).encode('iso-8859-1') for k, v in params.iteritems()}
-        headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=ISO-8859-1'}
-        fetch_cmd = self.fetch_cmd or UrlFetchCommand(_PAYMENT_URL, params, urlfetch.POST, headers)
-        fetch_result = fetch_cmd.execute().result
+        if not self.errors:
+            super(GeneratePayment, self).do_business(stop_on_error)
+            data_access = FindAccessDataCmd().execute().result
+            params = _make_params(data_access.email, data_access.token,
+                                  self.redirect_url, self.client_name,
+                                  self.client_email, self.result.key.id(),
+                                  self.items, self.address,
+                                  self.currency)
+            params = {k: unicode(v).encode('iso-8859-1') for k, v in params.iteritems()}
+            headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=ISO-8859-1'}
+            fetch_cmd = self.fetch_cmd or UrlFetchCommand(_PAYMENT_URL, params, urlfetch.POST, headers)
+            fetch_result = fetch_cmd.execute().result
 
-        if fetch_result:
-            content = fetch_result.content
-            root = ElementTree.XML(content)
-            if root.tag != "errors":
-                self.result.code = root.findtext("code").decode('ISO-8859-1')
-                self.result.status = STATUS_SENT_TO_PAGSEGURO
-                log_key = PagSegLog(status=STATUS_SENT_TO_PAGSEGURO).put()
-                arc = PagSegPaymentToLog(origin=self.result.key, destination=log_key)
-                self.__to_commit = [self.result, arc]
-                # handler error here on else
+            if fetch_result:
+                content = fetch_result.content
+                root = ElementTree.XML(content)
+                if root.tag != "errors":
+                    self.result.code = root.findtext("code").decode('ISO-8859-1')
+                    self.result.status = STATUS_SENT_TO_PAGSEGURO
+                    log_key = PagSegLog(status=STATUS_SENT_TO_PAGSEGURO).put()
+                    arc = PagSegPaymentToLog(origin=self.result.key, destination=log_key)
+                    self.__to_commit = [self.result, arc]
+                    # handler error here on else
 
 
     def commit(self):
-        list_to_commit = super(GeneratePayment, self).commit()
-        if self.__to_commit:
-            list_to_commit.extend(self.__to_commit)
-        return list_to_commit
+        if not self.errors:
+            list_to_commit = super(GeneratePayment, self).commit()
+            if self.__to_commit:
+                list_to_commit.extend(self.__to_commit)
+            return list_to_commit
 
 
 class AllPaymentsSearch(ModelSearchCommand):
