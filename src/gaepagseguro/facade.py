@@ -50,32 +50,29 @@ def payment(redirect_url, client_name, client_email, payment_origin, items, addr
                            currency, fetch_cmd)
 
 
-def payment_detail( transaction_code):
+def payment_detail(transaction_code):
     '''
     Used when PagSeguro redirect user after payment
     transaction_code: the transaction code returned from payment
 
     Returns a command that contacts pagseguro site and change payment status and its history according to status code
-    (https://pagseguro.uol.com.br/v2/guia-de-integracao/api-de-notificacoes.html#!v2-item-api-de-notificacoes-status-da-transacao)
+    (https://pagseguro.uol.com.br/v2/guia-de-integracao/finalizacao-do-pagamento.html)
      The command keep the entire xml string on xml attribute if the user need more details
     '''
     return UpdatePaymentStatus(transaction_code, "https://ws.pagseguro.uol.com.br/v2/transactions")
 
 
-def payment_notification(email, token, transaction_code):
+def payment_notification(notification_code):
     '''
-    Used when PagSeguro notifies that something happened with transaction
-    email: the pagseguro registered email
-    token: the pagseguro registered token
-    transaction_code: the transaction code returned from payment
+    Used when PagSeguro redirect user after payment
+    notification_code: the transaction code returned from payment
 
-    Returns a command that contacts pagseguro site an has the status code for the transaction in result attibute
+    Returns a command that contacts pagseguro site and change payment status and its history according to status code
     (https://pagseguro.uol.com.br/v2/guia-de-integracao/api-de-notificacoes.html#!v2-item-api-de-notificacoes-status-da-transacao)
-     The command keep the entire xml string on xml attribute if the user need more details than just the status code
-     and keep the payment_reference code on the attribute with same name
+     The command keep the entire xml string on xml attribute if the user need more details
     '''
-    return UpdatePaymentStatus(email, token, transaction_code,
-                                 "https://ws.pagseguro.uol.com.br/v2/transactions/notifications")
+    return UpdatePaymentStatus(notification_code,
+                               "https://ws.pagseguro.uol.com.br/v2/transactions/notifications")
 
 
 class _PagSeguroAddress(object):
