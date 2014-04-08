@@ -34,6 +34,10 @@ handlers:
 - url: /_ah/warmup
   script: warmup.app
 
+- url: /pagseguro/api/notificacao
+  script: convention.app
+  secure: always
+
 - url: /pagseguro/admin.*
   script: convention.app
   secure: always

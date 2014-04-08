@@ -34,3 +34,7 @@ def gerar_pagamento(_handler, client_name, client_email, descriptions, quantitie
     # Redirecting to pag seguro site
     if code:
         _handler.redirect(facade.pagseguro_url(code))
+
+
+def notificacao(notificationCode, notificationType):
+    facade.payment_notification(notificationCode).execute()

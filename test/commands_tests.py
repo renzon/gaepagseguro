@@ -110,7 +110,7 @@ _PAGSEGURO_DETAIL_XML = '''<?xml version="1.0" encoding="ISO-8859-1" standalone=
 
 def _generate_xml_detail(payment_reference, status):
     xml = _PAGSEGURO_DETAIL_XML % (payment_reference, status)
-    return xml
+    return xml.encode('ISO-8859-1')
 
 
 class PagSeguroAccessDataTests(GAETestCase):
@@ -212,7 +212,7 @@ class IntegrationTests(GAETestCase):
         # mocking pagseguro connection
         fetch_mock = Mock()
         fetch_mock.execute = Mock(return_value=fetch_mock)
-        fetch_mock.result.content = _SUCCESS_PAGSEGURO_XML
+        fetch_mock.result.content = _SUCCESS_PAGSEGURO_XML.encode('ISO-8859-1')
         fetch_mock.result.status_code = 200
         fetch_mock.errors = {}
         fetch_mock.commit = Mock(return_value=[])
@@ -288,8 +288,8 @@ class HistoryTests(GAETestCase):
     def test_detail(self):
         # Setup data
 
-        acess_data = PagSegAccessData(email='renzo@python.pro.br', token='abc123')
-        acess_data.put()
+        access_data = PagSegAccessData(email='renzo@python.pro.br', token='abc123')
+        access_data.put()
 
         payment_key = PagSegPayment(code='FOO', status=STATUS_SENT_TO_PAGSEGURO).put()
 
@@ -298,19 +298,19 @@ class HistoryTests(GAETestCase):
         for log_key in logs_keys:
             PagSegPaymentToLog(origin=payment_key, destination=log_key).put()
         expected_statuses = [STATUS_CREATED, STATUS_SENT_TO_PAGSEGURO]
-        self._assert_history_change(acess_data, payment_key, '1', expected_statuses)
+        self._assert_history_change(access_data, payment_key, '1', expected_statuses)
         expected_statuses.append(STATUS_ANALYSIS)
-        self._assert_history_change(acess_data, payment_key, '2', expected_statuses)
+        self._assert_history_change(access_data, payment_key, '2', expected_statuses)
         expected_statuses.append(STATUS_ACCEPTED)
-        self._assert_history_change(acess_data, payment_key, '3', expected_statuses)
+        self._assert_history_change(access_data, payment_key, '3', expected_statuses)
         expected_statuses.append(STATUS_AVAILABLE)
-        self._assert_history_change(acess_data, payment_key, '4', expected_statuses)
+        self._assert_history_change(access_data, payment_key, '4', expected_statuses)
         expected_statuses.append(STATUS_DISPUTE)
-        self._assert_history_change(acess_data, payment_key, '5', expected_statuses)
+        self._assert_history_change(access_data, payment_key, '5', expected_statuses)
         expected_statuses.append(STATUS_RETURNED)
-        self._assert_history_change(acess_data, payment_key, '6', expected_statuses)
+        self._assert_history_change(access_data, payment_key, '6', expected_statuses)
         expected_statuses.append(STATUS_CANCELLED)
-        self._assert_history_change(acess_data, payment_key, '7', expected_statuses)
+        self._assert_history_change(access_data, payment_key, '7', expected_statuses)
 
     def _assert_notification_change(self, acess_data, payment_key, pagseguro_xml_status, expected_status_history):
         # mocking pagseguro connection
@@ -339,8 +339,8 @@ class HistoryTests(GAETestCase):
     def test_notification(self):
         # Setup data
 
-        acess_data = PagSegAccessData(email='renzo@python.pro.br', token='abc123')
-        acess_data.put()
+        access_data = PagSegAccessData(email='renzo@python.pro.br', token='abc123')
+        access_data.put()
 
         payment_key = PagSegPayment(code='FOO', status=STATUS_SENT_TO_PAGSEGURO).put()
 
@@ -349,16 +349,16 @@ class HistoryTests(GAETestCase):
         for log_key in logs_keys:
             PagSegPaymentToLog(origin=payment_key, destination=log_key).put()
         expected_statuses = [STATUS_CREATED, STATUS_SENT_TO_PAGSEGURO]
-        self._assert_notification_change(acess_data, payment_key, '1', expected_statuses)
+        self._assert_notification_change(access_data, payment_key, '1', expected_statuses)
         expected_statuses.append(STATUS_ANALYSIS)
-        self._assert_notification_change(acess_data, payment_key, '2', expected_statuses)
+        self._assert_notification_change(access_data, payment_key, '2', expected_statuses)
         expected_statuses.append(STATUS_ACCEPTED)
-        self._assert_notification_change(acess_data, payment_key, '3', expected_statuses)
+        self._assert_notification_change(access_data, payment_key, '3', expected_statuses)
         expected_statuses.append(STATUS_AVAILABLE)
-        self._assert_notification_change(acess_data, payment_key, '4', expected_statuses)
+        self._assert_notification_change(access_data, payment_key, '4', expected_statuses)
         expected_statuses.append(STATUS_DISPUTE)
-        self._assert_notification_change(acess_data, payment_key, '5', expected_statuses)
+        self._assert_notification_change(access_data, payment_key, '5', expected_statuses)
         expected_statuses.append(STATUS_RETURNED)
-        self._assert_notification_change(acess_data, payment_key, '6', expected_statuses)
+        self._assert_notification_change(access_data, payment_key, '6', expected_statuses)
         expected_statuses.append(STATUS_CANCELLED)
-        self._assert_notification_change(acess_data, payment_key, '7', expected_statuses)
+        self._assert_notification_change(access_data, payment_key, '7', expected_statuses)

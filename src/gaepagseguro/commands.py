@@ -13,11 +13,8 @@ from gaepagseguro.model import PagSegAccessData, PagSegItem, OriginToPagSegPayme
 
 import re
 
-_noxmlns_re = re.compile('''xmlns=["'].*["']''')
 
 
-def _remove_first_xmlns(xmlstr):
-    return "".join(_noxmlns_re.split(xmlstr, 1))
 
 
 def _make_params(email, token, redirect_url, client_name, client_email, payment_reference, items, address,
@@ -155,7 +152,7 @@ class GeneratePayment(SaveNewPayment):
         data_access = FindAccessDataCmd().execute().result
         params = _make_params(data_access.email, data_access.token,
                               self.redirect_url, self.client_name,
-                              self.client_email, self.result.key,
+                              self.client_email, self.result.key.id(),
                               self.items, self.address,
                               self.currency)
         params = {k: unicode(v).encode('iso-8859-1') for k, v in params.iteritems()}
@@ -164,10 +161,10 @@ class GeneratePayment(SaveNewPayment):
         fetch_result = fetch_cmd.execute().result
 
         if fetch_result:
-            content = _remove_first_xmlns(fetch_result.content)
+            content = fetch_result.content
             root = ElementTree.XML(content)
             if root.tag != "errors":
-                self.result.code = root.findtext("code")
+                self.result.code = root.findtext("code").decode('ISO-8859-1')
                 self.result.status = STATUS_SENT_TO_PAGSEGURO
                 log_key = PagSegLog(status=STATUS_SENT_TO_PAGSEGURO).put()
                 arc = PagSegPaymentToLog(origin=self.result.key, destination=log_key)
@@ -195,12 +192,12 @@ class PaymentsByStatusSearch(ModelSearchCommand):
 
 
 XML_STATUS_TO_MODEL_STATUS = {'1': STATUS_SENT_TO_PAGSEGURO,
-              '2': STATUS_ANALYSIS,
-              '3': STATUS_ACCEPTED,
-              '4': STATUS_AVAILABLE,
-              '5': STATUS_DISPUTE,
-              '6': STATUS_RETURNED,
-              '7': STATUS_CANCELLED}
+                              '2': STATUS_ANALYSIS,
+                              '3': STATUS_ACCEPTED,
+                              '4': STATUS_AVAILABLE,
+                              '5': STATUS_DISPUTE,
+                              '6': STATUS_RETURNED,
+                              '7': STATUS_CANCELLED}
 
 
 class UpdatePaymentStatus(Command):
@@ -214,19 +211,22 @@ class UpdatePaymentStatus(Command):
         params = {'email': access_data.email, 'token': access_data.token}
         self.__to_commit = None
         # attribution to allow dependency injection of fetch_command
-        self._fetch_command = self._fetch_command(self.url, params) or UrlFetchCommand(self.url, params)
+        if self._fetch_command is None:
+            self._fetch_command = UrlFetchCommand(self.url, params)
+        else:
+            self._fetch_command = self._fetch_command(self.url, params)
         self._fetch_command.set_up()
 
     def do_business(self, stop_on_error=False):
         self._fetch_command.do_business()
         pagseguro_fetch_result = self._fetch_command.result
         if pagseguro_fetch_result:
-            content = _remove_first_xmlns(pagseguro_fetch_result.content)
+            content = pagseguro_fetch_result.content
             self.xml = content
             root = ElementTree.XML(content)
             if root.tag != "errors":
-                status = root.findtext("status")
-                payment_id = root.findtext("reference")
+                status = root.findtext("status").decode('ISO-8859-1')
+                payment_id = root.findtext("reference").decode('ISO-8859-1')
                 payment = NodeSearch(payment_id).execute().result
                 self.result = payment
                 internal_status = XML_STATUS_TO_MODEL_STATUS[status]
