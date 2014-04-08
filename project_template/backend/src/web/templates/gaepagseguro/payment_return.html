@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <style>
+        table, th, td {
+            border: 1px solid black;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+{% if msg=='PROCESSING' %}
+    <h1>Pagamento sendo processado</h1>
+    <p>Obrigado, seu pagamento está sendo processado junto ao pagseguro</p>
+{% elif msg=='OK' %}
+    <h1>Pagamento realizado com sucesso</h1>
+    <p>Obrigado, seu pagamento foi realiazado e seu produto será entregue</p>
+{% else %}
+    <h1>Erro no Pagametno</h1>
+    <p>Infelizmente seu pagamento não foi efetuado. Tente usar outro meio de pagamento.</p>
+{% endif %}
+
+</body>
+</html>
