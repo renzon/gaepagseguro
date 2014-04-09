@@ -10,6 +10,7 @@ from gaegraph.model import Node, to_node_key
 from gaepagseguro.model import PagSegAccessData, PagSegItem, OriginToPagSegPayment, PagSegPayment, PagSegPaymentToItem, \
     STATUS_SENT_TO_PAGSEGURO, PagSegLog, PagSegPaymentToLog, STATUS_CREATED, STATUS_ANALYSIS, STATUS_ACCEPTED, \
     STATUS_AVAILABLE, STATUS_DISPUTE, STATUS_CANCELLED, STATUS_RETURNED
+from gaevalidator.ndb.validator import ModelValidator
 
 import re
 
@@ -130,10 +131,39 @@ class SaveNewPayment(CommandList):
         return super(SaveNewPayment, self).commit() + self.__arcs
 
 
+class PagSegItemValidator(ModelValidator):
+    _model_class = PagSegItem
+    _include = (PagSegItem.quantity, PagSegItem.price)
+
+    def validate(self):
+        errors = super(PagSegItemValidator, self).validate()
+        if not self.description:
+            errors['description'] = 'Description is required'
+        if not self.reference:
+            errors['reference'] = 'Reference is required'
+        return errors
+
+    def populate(self, model=None):
+        model = super(PagSegItemValidator, self).populate(model)
+        model.description = self.description
+        model.reference = self.reference
+        return model
+
+
 class GeneratePayment(SaveNewPayment):
     def __init__(self, redirect_url, client_name, client_email, payment_owner, items, address,
                  currency, fetch_cmd=None):
-        super(GeneratePayment, self).__init__(payment_owner, items)
+        item_validators = [PagSegItemValidator(**i) for i in items]
+        item_errors = [v.validate() for v in item_validators]
+        has_errors = False
+        for e in item_errors:
+            if e:
+                has_errors = True
+                break
+        model_items = [] if has_errors else [v.populate() for v in item_validators]
+        super(GeneratePayment, self).__init__(payment_owner, model_items)
+        if has_errors:
+            self.add_error('items', item_errors)
         self.currency = currency
         self.address = address
         self.client_email = client_email

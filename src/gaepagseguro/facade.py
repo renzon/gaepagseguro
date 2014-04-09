@@ -102,10 +102,10 @@ def create_item(reference, description, price, quantity):
     Between a pagseguro item and an external entity
     '''
     reference = to_node_key(reference)
-    return PagSegItem(reference=reference,
-                      quantity=quantity,
-                      price=price,
-                      description=description)
+    return {'reference': reference,
+            'quantity': quantity,
+            'price': price,
+            'description': description}
 
 
 def search_payments(owner):

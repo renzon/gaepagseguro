@@ -5,7 +5,7 @@ from google.appengine.ext import ndb
 from gaegraph.business_base import DestinationsSearch
 from gaegraph.model import Node
 from gaepagseguro import facade, commands
-from gaepagseguro.commands import _make_params, FindAccessDataCmd, SaveNewPayment
+from gaepagseguro.commands import _make_params, FindAccessDataCmd, SaveNewPayment, PagSegItemValidator
 from gaepagseguro.model import PagSegAccessData, PagSegPayment, STATUS_SENT_TO_PAGSEGURO, STATUS_CREATED, PagSegLog, \
     PagSegPaymentToLog, STATUS_ANALYSIS, STATUS_ACCEPTED, STATUS_RETURNED, STATUS_DISPUTE, STATUS_AVAILABLE, \
     STATUS_CANCELLED, PagSegItem
@@ -159,6 +159,7 @@ class GeneratePaymentTests(GAETestCase):
         ndb.put_multi([reference0, reference1, owner])
         items = [facade.create_item(reference0, 'Python Course', '120.00', 1),
                  facade.create_item(reference1, 'Another Python Course', '240.00', 2)]
+        items = [PagSegItemValidator(**i).populate() for i in items]
         cmd = SaveNewPayment(owner, items).execute()
 
         items_keys = [i.key for i in items]
@@ -182,7 +183,7 @@ class GeneratePaymentTests(GAETestCase):
         ndb.put_multi([reference0, reference1, owner])
         items = [facade.create_item(reference0, 'Python Course', '120', 1),
                  facade.create_item(reference1, 'Another Python Course', '240', 2)]
-
+        items = [PagSegItemValidator(**i).populate() for i in items]
         address = facade.address('Rua 1', 2, 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
 
         client_name = 'Jhon Doe'
@@ -243,8 +244,9 @@ class IntegrationTests(GAETestCase):
         email = 'foo@bar.com'
         token = '4567890oiuytfgh'
         facade.create_or_update_access_data(email, token).execute()
-        items = [facade.create_item(1, 'Python Course', '121.67', 1),
-                 facade.create_item(2, 'Another Python Course', '240.00', 2)]
+        generated_items = [facade.create_item(1, 'Python Course', '121.67', 1),
+                           facade.create_item(2, 'Another Python Course', '240.00', 2)]
+        items = kwargs.get('items', (generated_items,))[0]
         address = facade.address('Rua 1', 2, 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
         client_name = kwargs.get('client_name', ('Jhon Doe',))[0]
         client_email = kwargs.get('client_email', ('jhon@bar.com',))[0]
@@ -278,10 +280,17 @@ class IntegrationTests(GAETestCase):
 
     def test_email_with_more_than_60_chars(self):
         # Setup data
-        self._assert_property_error(client_email=('a@foo.com.br'+('a'*49), 'Email deve ter menos de 60 caracteres'))
+        self._assert_property_error(client_email=('a@foo.com.br' + ('a' * 49), 'Email deve ter menos de 60 caracteres'))
 
     def test_required_client_name(self):
         self._assert_property_error(client_name=('', 'Nome obrigatório'))
+
+    def test_invalid_item(self):
+        items = [facade.create_item(1, 'Python Course', '121.67', 1),
+                 facade.create_item(2, '', 'a', 'b')]
+        self._assert_property_error(items=(items, [{}, {'description': 'Description is required',
+                                                        'price': u'price must be a number',
+                                                        'quantity': u'quantity must be integer'}]))
 
     def test_full_client_name(self):
         '''
@@ -291,10 +300,9 @@ class IntegrationTests(GAETestCase):
         self._assert_property_error(client_name=('Renzo', 'Nome informado deve ser completo'))
 
     def test_client_name_with_more_than_50_chars(self):
-        self._assert_property_error(client_name=('Renzo '+('a'*55), 'Nome deve possuir menos de 50 caracteres'))
+        self._assert_property_error(client_name=('Renzo ' + ('a' * 55), 'Nome deve possuir menos de 50 caracteres'))
 
     def test_all_payment_search(self):
-        self.maxDiff = None
         created_payments = [PagSegPayment(status=STATUS_CREATED) for i in xrange(3)]
         ndb.put_multi(created_payments)
         #reversing because search is desc
