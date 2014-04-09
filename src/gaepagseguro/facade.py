@@ -75,23 +75,18 @@ def payment_notification(notification_code):
                                "https://ws.pagseguro.uol.com.br/v2/transactions/notifications")
 
 
-class _PagSeguroAddress(object):
-    def __init__(self, street, number, quarter, postalcode, town, state, complement="Sem Complemento", country="BRA"):
-        self.street = street
-        self.number = number
-        self.quarter = quarter
-        self.postalcode = postalcode
-        self.town = town
-        self.state = state
-        self.complement = complement
-        self.country = country
-
-
 def address(street, number, quarter, postalcode, town, state, complement="Sem Complemento", country="BRA"):
     '''
     Build an address to be used with payment function
     '''
-    return _PagSeguroAddress(street, number, quarter, postalcode, town, state, complement, country)
+    return {'street': street,
+            'number': number,
+            'quarter': quarter,
+            'postalcode': postalcode,
+            'town': town,
+            'state': state,
+            'complement': complement,
+            'country': country}
 
 
 def create_item(reference, description, price, quantity):

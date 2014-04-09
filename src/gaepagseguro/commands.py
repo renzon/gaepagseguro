@@ -10,6 +10,7 @@ from gaegraph.model import Node, to_node_key
 from gaepagseguro.model import PagSegAccessData, PagSegItem, OriginToPagSegPayment, PagSegPayment, PagSegPaymentToItem, \
     STATUS_SENT_TO_PAGSEGURO, PagSegLog, PagSegPaymentToLog, STATUS_CREATED, STATUS_ANALYSIS, STATUS_ACCEPTED, \
     STATUS_AVAILABLE, STATUS_DISPUTE, STATUS_CANCELLED, STATUS_RETURNED
+from gaevalidator.base import Validator, StringField
 from gaevalidator.ndb.validator import ModelValidator
 
 import re
@@ -37,13 +38,13 @@ def _make_params(email, token, redirect_url, client_name, client_email, payment_
 
     if address:
         d.update({
-            "shippingAddressStreet": address.street,
-            "shippingAddressNumber": unicode(address.number),
-            "shippingAddressComplement": address.complement or "Sem Complemento",
-            "shippingAddressDistrict": address.quarter,
-            "shippingAddressPostalCode": address.postalcode,
-            "shippingAddressCity": address.town,
-            "shippingAddressState": address.state,
+            "shippingAddressStreet": address['street'],
+            "shippingAddressNumber": unicode(address['number']),
+            "shippingAddressComplement": address['complement'],
+            "shippingAddressDistrict": address['quarter'],
+            "shippingAddressPostalCode": address['postalcode'],
+            "shippingAddressCity": address['town'],
+            "shippingAddressState": address['state'],
             "shippingAddressCountry": "BRA"
         })
     return d
@@ -139,7 +140,7 @@ class PagSegItemValidator(ModelValidator):
         errors = super(PagSegItemValidator, self).validate()
         if not self.description:
             errors['description'] = 'description is required'
-        elif len(self.description)>100:
+        elif len(self.description) > 100:
             errors['description'] = 'description must have less then 100 chars'
         if not self.reference:
             errors['reference'] = 'reference is required'
@@ -150,6 +151,51 @@ class PagSegItemValidator(ModelValidator):
         model.description = self.description
         model.reference = self.reference
         return model
+
+
+class Address(object):
+    def __init__(self, street, number, quarter, postalcode, town, state, complement="Sem Complemento", country="BRA"):
+        self.street = street
+        self.number = number
+        self.quarter = quarter
+        self.postalcode = postalcode
+        self.town = town
+        self.state = state
+        self.complement = complement
+        self.country = country
+
+
+class AddressValidator(Validator):
+    street = StringField(required=True)
+    number = StringField(required=True)
+    quarter = StringField(required=True)
+    postalcode = StringField(required=True)
+    town = StringField(required=True)
+    state = StringField(required=True)
+    complement = StringField(default="Sem Complemento")
+
+    def validate(self):
+        errors = super(AddressValidator, self).validate()
+
+        def validate_max_len(str, max_len, key):
+            if str and len(str) > max_len:
+                errors[key] = '%s must have less then %s characters' % (key, max_len)
+
+        def validate_exactly_len(str, ex_len, key):
+            if str and len(str) != ex_len:
+                errors[key] = '%s must have exactly %s characters' % (key, ex_len)
+
+        validate_max_len(self.street, 80, 'street')
+        validate_max_len(self.number, 20, 'number')
+        validate_max_len(self.quarter, 60, 'quarter')
+        validate_exactly_len(self.postalcode, 8, 'postalcode')
+        validate_max_len(self.town, 60, 'town')
+        if self.town and len(self.town) == 1:
+            errors['town'] = 'town must have 2 characters at least'
+
+        validate_exactly_len(self.state, 2, 'state')
+        validate_max_len(self.complement, 40, 'complement')
+        return errors
 
 
 class GeneratePayment(SaveNewPayment):
@@ -188,6 +234,7 @@ class GeneratePayment(SaveNewPayment):
     def set_up(self):
         self._validate_client_email()
         self._validate_client_name()
+        self._validate_address()
         if not self.errors:
             super(GeneratePayment, self).set_up()
 
@@ -233,6 +280,14 @@ class GeneratePayment(SaveNewPayment):
                 self.add_error('client_name', 'Nome informado deve ser completo')
         else:
             self.add_error('client_name', 'Nome obrigatório')
+
+    def _validate_address(self):
+        validator = AddressValidator(**self.address)
+        errors = validator.validate()
+        if errors:
+            self.errors.update(errors)
+        else:
+            self.address = validator.transform()
 
 
 class AllPaymentsSearch(ModelSearchCommand):

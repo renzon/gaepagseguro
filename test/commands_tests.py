@@ -213,7 +213,7 @@ class IntegrationTests(GAETestCase):
         facade.create_or_update_access_data(email, token).execute()
         items = [facade.create_item(1, 'Python Course', '121.67', 1),
                  facade.create_item(2, 'Another Python Course', '240.00', 2)]
-        address = facade.address('Rua 1', 2, 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
+        address = facade.address('Rua 1', '2', 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
         client_name = 'Jhon Doe'
         client_email = 'jhon@bar.com'
         redirect_url = 'https://store.com/pagseguro'
@@ -247,7 +247,15 @@ class IntegrationTests(GAETestCase):
         generated_items = [facade.create_item(1, 'Python Course', '121.67', 1),
                            facade.create_item(2, 'Another Python Course', '240.00', 2)]
         items = kwargs.get('items', (generated_items,))[0]
-        address = facade.address('Rua 1', 2, 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
+
+        complement = kwargs.get('complement', ('apto 4',))[0]
+        state = kwargs.get('state', ('SP',))[0]
+        town = kwargs.get('town', ('São Paulo',))[0]
+        postalcode = kwargs.get('postalcode', ('12345678',))[0]
+        quarter = kwargs.get('quarter', ('meu bairro',))[0]
+        number = kwargs.get('number', ('2',))[0]
+        street = kwargs.get('street', ('Rua 1',))[0]
+        address = facade.address(street, number, quarter, postalcode, town, state, complement)
         client_name = kwargs.get('client_name', ('Jhon Doe',))[0]
         client_email = kwargs.get('client_email', ('jhon@bar.com',))[0]
         redirect_url = 'https://store.com/pagseguro'
@@ -258,13 +266,32 @@ class IntegrationTests(GAETestCase):
                                           items, address, fetch_cmd=fetch_mock)
         # Executing command
         command = generate_payment.execute()
-        error_dct = {k: v[1] for k, v in kwargs.iteritems()}
+        error_dct = {unicode(k): v[1] for k, v in kwargs.iteritems()}
         self.assertDictEqual(error_dct, command.errors)
         # nothing is executed
         self.assertFalse(fetch_mock.execute.called)
         self.assertIsNone(PagSegLog.query().get())
         self.assertIsNone(PagSegPayment.query().get())
         self.assertIsNone(PagSegItem.query().get())
+
+    def test_invalid_address(self):
+        self.maxDiff = None
+        self._assert_property_error(street=('a' * 81, 'street must have less then 80 characters'),
+                                    number=('a' * 21, 'number must have less then 20 characters'),
+                                    quarter=('a' * 61, 'quarter must have less then 60 characters'),
+                                    postalcode=('123456789', 'postalcode must have exactly 8 characters'),
+                                    town=('a' * 61, 'town must have less then 60 characters'),
+                                    state=('São Paulo', 'state must have exactly 2 characters'),
+                                    complement=('a' * 41, 'complement must have less then 40 characters'))
+
+        self._assert_property_error(street=('', 'street is required'),
+                                    number=('', 'number is required'),
+                                    quarter=('', 'quarter is required'),
+                                    postalcode=('', 'postalcode is required'),
+                                    town=('a', 'town must have 2 characters at least'),
+                                    state=('', 'state is required')
+        )
+
 
     def test_email_not_present(self):
         # Setup data
@@ -280,7 +307,8 @@ class IntegrationTests(GAETestCase):
 
     def test_email_with_more_than_60_chars(self):
         # Setup data
-        self._assert_property_error(client_email=('a@foo.com.br' + ('a' * 49), 'Email deve ter menos de 60 caracteres'))
+        self._assert_property_error(
+            client_email=('a@foo.com.br' + ('a' * 49), 'Email deve ter menos de 60 caracteres'))
 
     def test_required_client_name(self):
         self._assert_property_error(client_name=('', 'Nome obrigatório'))
@@ -313,6 +341,7 @@ class IntegrationTests(GAETestCase):
 
     def test_client_name_with_more_than_50_chars(self):
         self._assert_property_error(client_name=('Renzo ' + ('a' * 55), 'Nome deve possuir menos de 50 caracteres'))
+
 
     def test_all_payment_search(self):
         created_payments = [PagSegPayment(status=STATUS_CREATED) for i in xrange(3)]
