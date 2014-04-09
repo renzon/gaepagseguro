@@ -286,11 +286,23 @@ class IntegrationTests(GAETestCase):
         self._assert_property_error(client_name=('', 'Nome obrigatório'))
 
     def test_invalid_item(self):
+        self.maxDiff = None
         items = [facade.create_item(1, 'Python Course', '121.67', 1),
                  facade.create_item(2, '', 'a', 'b')]
-        self._assert_property_error(items=(items, [{}, {'description': 'Description is required',
-                                                        'price': u'price must be a number',
-                                                        'quantity': u'quantity must be integer'}]))
+        self._assert_property_error(items=(items, [{}, {'description': 'description is required',
+                                                        'price': 'price must be a number',
+                                                        'quantity': 'quantity must be integer'}]))
+
+        items = [facade.create_item(1, 'Python Course', '121.67', 1),
+                 facade.create_item(2, 'a' * 101, '10000000.00', '1000')]
+        self._assert_property_error(items=(items, [{}, {'description': 'description must have less then 100 chars',
+                                                        'price': 'price must be less than 9999999',
+                                                        'quantity': 'quantity must be less than 999'}]))
+
+        items = [facade.create_item(2, 'a' * 100, '0.00', '0'),
+                 facade.create_item(1, 'Python Course', '121.67', 1)]
+        self._assert_property_error(items=(items, [{'price': 'price must be greater than 0.01',
+                                                    'quantity': 'quantity must be greater than 1'}, {}, ]))
 
     def test_full_client_name(self):
         '''

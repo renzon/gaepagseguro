@@ -58,8 +58,8 @@ class PagSegItem(Node):
     #references a property from outside pagseguro app
     reference = ndb.KeyProperty(required=True)
     description = ndb.TextProperty(required=True, indexed=False)
-    price = SimpleCurrency(required=True, indexed=False)
-    quantity = IntegerBounded(required=True, lower=1, indexed=False)
+    price = SimpleCurrency(required=True, indexed=False, upper='9999999.00', lower='0.01')
+    quantity = IntegerBounded(required=True, lower=1, upper=999, indexed=False)
 
     def total(self):
         if isinstance(self.price, Decimal):

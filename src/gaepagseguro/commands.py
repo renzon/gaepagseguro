@@ -138,9 +138,11 @@ class PagSegItemValidator(ModelValidator):
     def validate(self):
         errors = super(PagSegItemValidator, self).validate()
         if not self.description:
-            errors['description'] = 'Description is required'
+            errors['description'] = 'description is required'
+        elif len(self.description)>100:
+            errors['description'] = 'description must have less then 100 chars'
         if not self.reference:
-            errors['reference'] = 'Reference is required'
+            errors['reference'] = 'reference is required'
         return errors
 
     def populate(self, model=None):
