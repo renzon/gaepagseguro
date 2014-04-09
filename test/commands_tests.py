@@ -180,8 +180,8 @@ class GeneratePaymentTests(GAETestCase):
         reference1 = ItemReferenceMock()
         owner = PaymentOwner()
         ndb.put_multi([reference0, reference1, owner])
-        items = [facade.create_item(reference0, 'Python Course', '120.00', 1),
-                 facade.create_item(reference1, 'Another Python Course', '240.00', 2)]
+        items = [facade.create_item(reference0, 'Python Course', '120', 1),
+                 facade.create_item(reference1, 'Another Python Course', '240', 2)]
 
         address = facade.address('Rua 1', 2, 'meu bairro', '12345678', 'São Paulo', 'SP', 'apto 4')
 

@@ -19,7 +19,7 @@ def _make_params(email, token, redirect_url, client_name, client_email, payment_
     d = {"email": email,
          "token": token,
          "currency": currency,
-         "reference": str(payment_reference),
+         "reference": unicode(payment_reference),
          "senderName": client_name,
          "senderEmail": client_email,
          "shippingType": "3",
@@ -31,7 +31,7 @@ def _make_params(email, token, redirect_url, client_name, client_email, payment_
         index += 1
         d["itemId%s" % index] = unicode(item.reference.id())
         d["itemDescription%s" % index] = item.description
-        d["itemAmount%s" % index] = item.price
+        d["itemAmount%s" % index] = '%.2f' % item.price
         d["itemQuantity%s" % index] = unicode(item.quantity)
 
     if address:
