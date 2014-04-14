@@ -3,4 +3,4 @@ gaebusiness==2.9
 gaegraph==2.1
 ndbext==0.1.3
 gaevalidator==0.1
-gaepagseguro==0.1.0
+gaepagseguro==0.2
