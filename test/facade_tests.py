@@ -58,7 +58,7 @@ class IntegrationTests(GAETestCase):
         # Payment assertions
         self.assertEqual(_SUCCESS_PAGSEGURO_CODE, payment_cmd.checkout_code)
         self.assertEqual(STATUS_SENT_TO_PAGSEGURO, payment.status)
-        self.assertEqual(Decimal('110.15'), payment.total, "Should be the some of item's totals")
+        self.assertEqual(Decimal('110.15'), payment.total, "Should be the sum of item's totals")
 
         # Owner assertion
 
