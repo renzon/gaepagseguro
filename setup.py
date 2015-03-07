@@ -25,12 +25,12 @@ standard_exclude_directories = [
 # you can't import this from another package, when you don't know if
 # that package is installed yet.
 def find_package_data(
-    where=".",
-    package="",
-    exclude=standard_exclude,
-    exclude_directories=standard_exclude_directories,
-    only_in_packages=True,
-    show_ignored=False):
+        where=".",
+        package="",
+        exclude=standard_exclude,
+        exclude_directories=standard_exclude_directories,
+        only_in_packages=True,
+        show_ignored=False):
     """
     Return a dictionary suitable for use in ``package_data``
     in a distutils ``setup.py`` file.
@@ -99,7 +99,7 @@ def find_package_data(
                         break
                 if bad_name:
                     continue
-                out.setdefault(package, []).append(prefix+name)
+                out.setdefault(package, []).append(prefix + name)
     return out
 
 
@@ -110,7 +110,6 @@ AUTHOR = "Renzo Nuccitelli"
 AUTHOR_EMAIL = "renzo.n@gmail.com"
 URL = "https://github.com/renzon/gaepagseguro"
 VERSION = __import__(PACKAGE).__version__
-
 
 setup(
     name=NAME,
@@ -133,4 +132,13 @@ setup(
         "Framework :: Paste",
     ],
     zip_safe=False,
+    install_requires=[
+        'gaebusiness>=4.5.2',
+        'gaegraph>=3.8',
+        'gaeforms>=0.14',
+        'mock==1.0.1',
+        'gaepermission>=0.12',
+        'xmltodict==0.9.0'
+
+    ]
 )
