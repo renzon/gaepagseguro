@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 import re
 
 from gaebusiness.business import Command, CommandParallel, CommandExecutionException
-from gaeforms.base import Form, StringField, CepField, EmailField
+from gaeforms.base import Form, StringField, CepField, EmailField, DecimalField
 from gaeforms.ndb.form import ModelForm
 from gaepagseguro.admin_commands import FindAccessDataCmd
 from gaepagseguro.model import PagSegItem, PagSegPayment
@@ -30,6 +30,11 @@ class PaymentForm(ModelForm):
 class ItemForm(ModelForm):
     _model_class = PagSegItem
     _exclude = [PagSegItem.creation]
+
+    def fill_with_model(self, model, *fields):
+        dct = super(ItemForm, self).fill_with_model(model, *fields)
+        dct['total']=DecimalField().localize(model.total())
+        return dct
 
 
 class AddressForm(Form):
