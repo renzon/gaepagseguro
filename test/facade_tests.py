@@ -73,3 +73,14 @@ class IntegrationTests(GAETestCase):
         # Items assertions
         self.assertEqual(2, len(payment.pay_items))
         self.assertIsInstance(payment.pay_items[0], PagSegItem)
+
+        # Dictionary assertions
+
+        form = pagseguro_facade.payment_form()
+        payment_dct = form.fill_with_model(payment)
+        self.maxDiff = None
+        items_dcts = [{u'id': 7L, 'price': u'18.99', 'description': u'Python Birds', 'reference': 2L, 'quantity': u'1',
+                       'total': '18.99'},
+                      {u'id': 5L, 'price': u'45.58', 'description': u'App Engine', 'reference': 3L, 'quantity': u'2',
+                       'total': '91.16'}]
+        self.assertListEqual(items_dcts, payment_dct['pay_items'])
