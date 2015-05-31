@@ -21,10 +21,10 @@ class IntegrationTests(GAETestCase):
 
         # Creating the address validation cmd that will be used on payment
         validate_address_cmd = pagseguro_facade.validate_address_cmd(complement='apto 4', state='SP',
-                                                                        town='São Paulo',
-                                                                        postalcode='12345-678',
-                                                                        quarter='Jardins', number='2',
-                                                                        street='Av Vicente de Carvalho')
+                                                                     town='São Paulo',
+                                                                     postalcode='12345-678',
+                                                                     quarter='Jardins', number='2',
+                                                                     street='Av Vicente de Carvalho')
 
         # Creating items included on payment
         class ProductMock(Node):
@@ -48,10 +48,10 @@ class IntegrationTests(GAETestCase):
         # Generating payment
 
         payment_cmd = pagseguro_facade.generate_payment('http://somedomain.com/receive',
-                                                           owner.name,
-                                                           owner.email,
-                                                           owner,
-                                                           validate_address_cmd, *validate_item_cmds)
+                                                        owner.name,
+                                                        owner.email,
+                                                        owner,
+                                                        validate_address_cmd, *validate_item_cmds)
 
         payment = payment_cmd()
 
@@ -62,16 +62,14 @@ class IntegrationTests(GAETestCase):
 
         # Owner assertion
 
-        owner_payments = pagseguro_facade.search_payments(owner)()
+        owner_payments = pagseguro_facade.search_payments(owner, relations=['owner', 'pay_items', 'logs'])()
         self.assertListEqual([payment], owner_payments)
-
+        payment = owner_payments[0]
         # Log assertions
 
-        logs = pagseguro_facade.search_logs(payment)()
-        statuses = [log.status for log in logs]
+        statuses = [log.status for log in payment.logs]
         self.assertEqual([STATUS_CREATED, STATUS_SENT_TO_PAGSEGURO], statuses)
 
         # Items assertions
-        items = pagseguro_facade.search_items(payment)()
-        self.assertEqual(2, len(items))
-        self.assertIsInstance(items[0], PagSegItem)
+        self.assertEqual(2, len(payment.items))
+        self.assertIsInstance(payment.items[0], PagSegItem)
