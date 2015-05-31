@@ -5,7 +5,7 @@ from gaegraph.business_base import DestinationsSearch
 
 from gaepagseguro.admin_commands import FindAccessDataCmd, CreateOrUpdateAccessData
 from gaepagseguro.search_commands import PaymentsByStatusSearch, AllPaymentsSearch, SearchLogs, SearchOwnerPayments, \
-    SearchItems
+    SearchItems, GetPayment
 from gaepagseguro.connection_commands import GeneratePayment
 from gaepagseguro.model import STATUSES, ToPagSegPayment, PagSegPaymentToLog, PagSegPaymentToItem, STATUS_CREATED, \
     STATUS_SENT_TO_PAGSEGURO, STATUS_ANALYSIS, STATUS_ACCEPTED, STATUS_AVAILABLE, STATUS_CHARGEBACK_DEBT, \
@@ -105,9 +105,20 @@ def validate_item_cmd(description, price, quantity, reference=None):
     return ValidateItemCmd(description=description, price=price, quantity=quantity, reference=reference)
 
 
+def get_payment(payment_id, relations=None):
+    """
+    Search payment on BD given its payment id
+    @param payment_id: the payment id
+    @param relations: list of relations to bring with payment objects. possible values on list: logs, pay_items, owner
+    :return:
+    """
+    return GetPayment(payment_id,relations)
+
 def search_payments(owner, relations=None):
     """
     Returns a command to search owner's payment
+    @param: the owner of payments
+    @param relations: list of relations to bring with payment objects. possible values on list: logs, pay_items, owner
     """
     return SearchOwnerPayments(owner)
 
@@ -122,7 +133,7 @@ def search_all_payments(payment_status=None, page_size=20, start_cursor=None, of
     @param offset: offset number of payment on search
     @param use_cache: indicates with should use cache or not for results
     @param cache_begin: indicates with should use cache on beginning or not for results
-    @param relations: list of relations to bring with payment objects. possible values on list: logs, items, owner
+    @param relations: list of relations to bring with payment objects. possible values on list: logs, pay_items, owner
     @return: Returns a command to search all payments ordered by creation desc
     """
     if payment_status:

@@ -4,6 +4,7 @@ from google.appengine.ext import ndb
 from base import GAETestCase
 from gaepagseguro import pagseguro_facade
 from gaepagseguro.model import PagSegPayment, STATUS_CREATED, STATUS_SENT_TO_PAGSEGURO
+from gaepagseguro.search_commands import GetPayment
 
 
 class PaymentSearchTests(GAETestCase):
@@ -29,3 +30,12 @@ class PaymentSearchTests(GAETestCase):
         self.assertListEqual(sent_payments, cmd.result)
         cmd = pagseguro_facade.search_all_payments(STATUS_CREATED, page_size=4).execute()
         self.assertListEqual(created_payments, cmd.result)
+
+    def test_get_payment_search(self):
+        created_payment = PagSegPayment(status=STATUS_CREATED)
+        created_payment.put()
+        comand=GetPayment(created_payment.key.id())
+        payment=comand()
+        self.assertEqual(created_payment, payment)
+
+

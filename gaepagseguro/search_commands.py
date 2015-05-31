@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 
 from gaebusiness.gaeutil import ModelSearchCommand, SingleModelSearchCommand
 from gaegraph.business_base import DestinationsSearch, SingleDestinationSearch, ModelSearchWithRelations, \
-    SingleOriginSearch
+    SingleOriginSearch, NodeSearch
 
 from gaepagseguro.model import PagSegPayment, PagSegPaymentToLog, ToPagSegPayment, PagSegPaymentToItem
 
@@ -25,6 +25,11 @@ class SearchItems(DestinationsSearch):
 
 
 payment_relations = {'pay_items': SearchItems, 'owner': SearchOwner, 'logs': SearchLogs}
+
+
+class GetPayment(NodeSearch):
+    _model_class = PagSegPayment
+    _relations = payment_relations
 
 
 class PaymentSearchBase(ModelSearchWithRelations):
