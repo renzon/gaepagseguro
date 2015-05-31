@@ -6,25 +6,14 @@ from gaebusiness.business import Command, CommandParallel, CommandExecutionExcep
 from gaeforms.base import Form, StringField, CepField, EmailField, DecimalField
 from gaeforms.ndb.form import ModelForm
 from gaepagseguro.admin_commands import FindAccessDataCmd
-from gaepagseguro.model import PagSegItem, PagSegPayment
+from gaepagseguro.model import PagSegItem, PagSegPayment, PagSegLog
 
 # Forms
 
-class PaymentForm(ModelForm):
-    _model_class = PagSegPayment
 
-    def fill_with_model(self, model, *fields):
-        dct = super(PaymentForm, self).fill_with_model(model, *fields)
-        try:
-            dct['owner'] = model.owner.to_dict(include=['name', 'id', 'email'])
-        except AttributeError:
-            pass
-        try:
-            dct['pay_items'] = [ItemForm().fill_with_model(item) for item in model.pay_items]
-        except AttributeError:
-            pass
 
-        return dct
+class LogForm(ModelForm):
+    _model_class = PagSegLog
 
 
 class ItemForm(ModelForm):
@@ -33,7 +22,30 @@ class ItemForm(ModelForm):
 
     def fill_with_model(self, model, *fields):
         dct = super(ItemForm, self).fill_with_model(model, *fields)
-        dct['total']=DecimalField().localize(model.total())
+        dct['total'] = DecimalField().localize(model.total())
+        return dct
+
+
+class PaymentForm(ModelForm):
+    _model_class = PagSegPayment
+    _log_form = LogForm()
+    _item_form = ItemForm()
+
+    def fill_with_model(self, model, *fields):
+        dct = super(PaymentForm, self).fill_with_model(model, *fields)
+        try:
+            dct['owner'] = model.owner.to_dict(include=['name', 'id', 'email'])
+        except AttributeError:
+            pass
+        try:
+            dct['pay_items'] = [self._item_form.fill_with_model(item) for item in model.pay_items]
+        except AttributeError:
+            pass
+        try:
+            dct['logs'] = [self._log_form.fill_with_model(item) for item in model.logs]
+        except AttributeError:
+            pass
+
         return dct
 
 

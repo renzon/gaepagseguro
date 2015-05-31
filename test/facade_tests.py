@@ -92,5 +92,5 @@ class IntegrationTests(GAETestCase):
 
 
         # Log Assertions
-        self.assertListEqual([STATUS_CREATED, STATUS_SENT_TO_PAGSEGURO], [log.status for log in payment_dct['logs']])
+        self.assertListEqual([STATUS_CREATED, STATUS_SENT_TO_PAGSEGURO], [log['status'] for log in payment_dct['logs']])
 
