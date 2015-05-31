@@ -71,5 +71,5 @@ class IntegrationTests(GAETestCase):
         self.assertEqual([STATUS_CREATED, STATUS_SENT_TO_PAGSEGURO], statuses)
 
         # Items assertions
-        self.assertEqual(2, len(payment.items))
-        self.assertIsInstance(payment.items[0], PagSegItem)
+        self.assertEqual(2, len(payment.pay_items))
+        self.assertIsInstance(payment.pay_items[0], PagSegItem)

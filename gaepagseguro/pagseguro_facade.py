@@ -112,7 +112,8 @@ def get_payment(payment_id, relations=None):
     @param relations: list of relations to bring with payment objects. possible values on list: logs, pay_items, owner
     :return:
     """
-    return GetPayment(payment_id,relations)
+    return GetPayment(payment_id, relations)
+
 
 def search_payments(owner, relations=None):
     """
@@ -120,7 +121,7 @@ def search_payments(owner, relations=None):
     @param: the owner of payments
     @param relations: list of relations to bring with payment objects. possible values on list: logs, pay_items, owner
     """
-    return SearchOwnerPayments(owner)
+    return SearchOwnerPayments(owner, relations)
 
 
 def search_all_payments(payment_status=None, page_size=20, start_cursor=None, offset=0, use_cache=True,

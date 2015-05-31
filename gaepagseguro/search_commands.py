@@ -12,10 +12,6 @@ class SearchLogs(DestinationsSearch):
     arc_class = PagSegPaymentToLog
 
 
-class SearchOwnerPayments(DestinationsSearch):
-    arc_class = ToPagSegPayment
-
-
 class SearchOwner(SingleOriginSearch):
     arc_class = ToPagSegPayment
 
@@ -25,6 +21,11 @@ class SearchItems(DestinationsSearch):
 
 
 payment_relations = {'pay_items': SearchItems, 'owner': SearchOwner, 'logs': SearchLogs}
+
+
+class SearchOwnerPayments(DestinationsSearch):
+    arc_class = ToPagSegPayment
+    _relations = payment_relations
 
 
 class GetPayment(NodeSearch):

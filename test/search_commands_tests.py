@@ -34,8 +34,8 @@ class PaymentSearchTests(GAETestCase):
     def test_get_payment_search(self):
         created_payment = PagSegPayment(status=STATUS_CREATED)
         created_payment.put()
-        comand=GetPayment(created_payment.key.id())
-        payment=comand()
+        comand = GetPayment(created_payment.key.id())
+        payment = comand()
         self.assertEqual(created_payment, payment)
 
 

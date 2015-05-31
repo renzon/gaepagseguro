@@ -134,7 +134,7 @@ setup(
     zip_safe=False,
     install_requires=[
         'gaebusiness>=4.5.2',
-        'gaegraph>=3.8',
+        'gaegraph>=3.9',
         'gaeforms>=0.14',
         'mock==1.0.1',
         'gaepermission>=0.12',
